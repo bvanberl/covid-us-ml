@@ -1,0 +1,15 @@
+PATHS:
+  RAW_DATA: 'D:/Documents/Work/covid-cxr/data/'               # Path to folder containing all raw data (COVID, NCOVID)
+  NCOVID_DATA: 'D:/Documents/data/covid-us-ml/NCOVID/'        # Path to non-COVID-19 raw data
+  COVID_DATA: 'D:/Documents/data/covid-us-ml/COVID/'          # Path to COVID-19 raw data
+  PROCESSED_DATA: 'data/preprocessed/'
+  TRAIN_SET: 'data/processed/train_set.csv'
+  VAL_SET: 'data/processed/val_set.csv'
+  TEST_SET: 'data/processed/test_set.csv'
+  GEN_IMAGES: 'documents/generated_images/'
+  LOGS: 'results\\logs\\'
+  MODEL_WEIGHTS: 'results/models/'
+  MODEL_TO_LOAD: 'results/models/model.h5'
+  OUTPUT_CLASS_INDICES: './data/interpretability/output_class_indices.pkl'
+  BATCH_PREDS: 'results/predictions/'
+

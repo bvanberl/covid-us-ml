@@ -2,7 +2,7 @@
 data/processed/*
 data/raw/*
 data/transformers/*
-data/interpretability/*
+data/serializations/*
 documents/generated_images/*
 results/experiments/*
 results/logs/training/*
@@ -13,7 +13,7 @@ results/predictions/*
 !data/processed/train/.gitkeep
 !data/processed/val/.gitkeep
 !data/processed/test/.gitkeep
-!data/interpretability/.gitkeep
+!data/serializations/.gitkeep
 !data/raw/.gitkeep
 !data/raw/HIFIS_Clients_example.csv
 !data/transformers/.gitkeep
