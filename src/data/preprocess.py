@@ -1,7 +1,7 @@
 import cv2
 
 
-def to_grayscale(img):
+def to_greyscale(img):
     '''
     Converts RBG image to greyscale.
     :param img: RBG image
