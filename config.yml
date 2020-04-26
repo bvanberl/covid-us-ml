@@ -1,0 +1,24 @@
+PATHS:
+  RAW_DATA: 'D:/Documents/Data/covid-us-ml/raw/'               # Path to folder containing all raw data (COVID, NCOVID)
+  NCOVID_DATA: 'D:/Documents/Data/covid-us-ml/raw/NCOVID'      # Path to non-COVID-19 raw data
+  COVID_DATA: 'D:/Documents/Data/covid-us-ml/raw/COVID'        # Path to COVID-19 raw data
+  PROCESSED_DATA: 'data/preprocessed/'
+  TRAIN_SET: 'data/preprocessed/train_set.csv'
+  VAL_SET: 'data/preprocessed/val_set.csv'
+  TEST_SET: 'data/preprocessed/test_set.csv'
+  TRAIN_ENCOUNTERS: 'data/preprocessed/train_encounters.csv'
+  VAL_ENCOUNTERS: 'data/preprocessed/val_encounters.csv'
+  TEST_ENCOUNTERS: 'data/preprocessed/test_encounters.csv'
+  GEN_IMAGES: 'documents/generated_images/'
+  LOGS: 'results\\logs\\'
+  MODEL_WEIGHTS: 'results/models/'
+  MODEL_TO_LOAD: 'results/models/model.h5'
+  OUTPUT_CLASS_INDICES: './data/interpretability/output_class_indices.pkl'
+  BATCH_PREDS: 'results/predictions/'
+
+DATA:
+  IMG_DIM: [224, 224]
+  VAL_SPLIT: 0.08
+  TEST_SPLIT: 0.1
+  CLASSES: ['NCOVID', 'COVID']                   # Classes for binary classification
+

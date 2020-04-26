@@ -1,19 +1,14 @@
 # PROJECT FILES ------------------------------------------
-data/processed/*
-data/raw/*
-data/transformers/*
-data/interpretability/*
+data/preprocessed/*
+data/serializations/*
 documents/generated_images/*
 results/experiments/*
 results/logs/training/*
 results/logs/hparam_search/*
 results/models/*
 results/predictions/*
-!data/processed/.gitkeep
-!data/processed/train/.gitkeep
-!data/processed/val/.gitkeep
-!data/processed/test/.gitkeep
-!data/interpretability/.gitkeep
+!data/preprocessed/.gitkeep
+!data/serializations/.gitkeep
 !data/raw/.gitkeep
 !data/raw/HIFIS_Clients_example.csv
 !data/transformers/.gitkeep
