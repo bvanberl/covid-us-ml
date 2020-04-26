@@ -6,7 +6,7 @@ import glob
 from tqdm import tqdm
 from sklearn.model_selection import train_test_split
 from src.data.filter_beam import filter_beam
-from src.data.preprocess import to_grayscale
+from src.data.preprocess import to_greyscale
 
 def mp4_to_images(mp4_path):
     '''
@@ -26,7 +26,7 @@ def mp4_to_images(mp4_path):
             break   # End of frames reached
         img_path = vid_dir + '/' + mp4_filename + '_' + str(idx) + '.jpg'
         frame = filter_beam(frame, triangles_mask=True)  # Mask out everything but US beam
-        grey_frame = to_grayscale(frame)
+        grey_frame = to_greyscale(frame)
         cv2.imwrite(img_path, grey_frame)
         idx += 1
 
