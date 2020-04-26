@@ -3,7 +3,6 @@ from tensorflow.keras.layers import Dense, Conv2D, MaxPool2D, Flatten, Dropout, 
                                     Activation, concatenate, GlobalAveragePooling2D
 from tensorflow.keras.regularizers import l2
 from tensorflow.keras.optimizers import Adam
-from tensorflow.keras.initializers import Constant
 from tensorflow.keras.applications.resnet_v2 import ResNet50V2
 
 
