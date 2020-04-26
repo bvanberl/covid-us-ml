@@ -21,6 +21,8 @@ def refine_mask(mask):
     # Extend the lines to the borders of the images. Then get triangles from the line endpoints and top corners of mask.
     for line in lines[0:2]:
         (x1, y1, x2, y2) = line[0]      # Get coordinates of endpoints of detected lines
+        if x2 - x1 == 0 or y2 - y1 == 0:                # If vertical or horizontal line, skip.
+            continue
         m = (y2 - y1) / (x2 - x1)       # Find the line's slope
         x1_orig = x1
         if y1 < y2:
@@ -42,11 +44,12 @@ def refine_mask(mask):
     return triangle_mask
 
 
-def filter_beam(orig_img):
+def filter_beam(orig_img, triangles_mask=True):
     '''
     Create a mask that isolates the ultrasound beam in an ultrasound image. Use the mask to blacken all regions in the
     image that are not within the bounds of the ultrasound beam.
     :param orig_img: A numpy array representing the ultrasound image to filter
+    :param triangles_mask: Boolean indicating whether to attempt filtering out
     :return: A numpy array representing the filtered ultrasound image
     '''
     img = cv2.cvtColor(orig_img, cv2.COLOR_BGR2GRAY)    # Get grey version of image.
@@ -67,11 +70,12 @@ def filter_beam(orig_img):
     cv2.fillPoly(mask, [beam_contour], [255,255,255])               # Create the mask by filling in the contour with white.
 
     # Attempt to filter out triangles in top corners of image
-    try:
-        triangle_mask = refine_mask(mask)
-        mask = cv2.bitwise_and(mask, triangle_mask)
-    except:
-        print("Triangle mask failed.")
+    if triangles_mask:
+        try:
+            triangle_mask = refine_mask(mask)
+            mask = cv2.bitwise_and(mask, triangle_mask)
+        except:
+            pass
 
     final_img = cv2.bitwise_and(orig_img, mask)    # Mask everything out but the US beam.
     return final_img
