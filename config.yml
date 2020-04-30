@@ -1,7 +1,7 @@
 PATHS:
-  RAW_DATA: 'D:/Documents/Data/covid-us-ml/raw/'               # Path to folder containing all raw data (COVID, NCOVID)
-  NCOVID_DATA: 'D:/Documents/Data/covid-us-ml/raw/NCOVID'      # Path to non-COVID-19 raw data
-  COVID_DATA: 'D:/Documents/Data/covid-us-ml/raw/COVID'        # Path to COVID-19 raw data
+  RAW_DATA: 'C:/Users/rober/Documents/Data/covid-us-ml/'               # Path to folder containing all raw data (COVID, NCOVID)
+  NCOVID_DATA: 'C:/Users/rober/Documents/Data/covid-us-ml/NCOVID'      # Path to non-COVID-19 raw data
+  COVID_DATA: 'C:/Users/rober/Documents/Data/covid-us-ml/COVID'       # Path to COVID-19 raw data
   PROCESSED_DATA: 'data/preprocessed/'
   TRAIN_SET: 'data/preprocessed/train_set.csv'
   VAL_SET: 'data/preprocessed/val_set.csv'
@@ -27,26 +27,28 @@ TRAIN:
   CLASS_MULTIPLIER: [1.0, 1.0]                           # Class multiplier for classes
   EXPERIMENT_TYPE: 'single_train'                        # One of {'single_train'}
   BATCH_SIZE: 64
-  EPOCHS: 100
+  EPOCHS: 300
   PATIENCE: 7
   METRIC_PREFERENCE: ['auc', 'recall', 'precision', 'loss']
 
 NN:
   RESNET50V2:
-    NODES_DENSE0: 128
-    LR: 0.00005
-    DROPOUT: 0.3
-    L2_LAMBDA: 0.0001
+    NODES_DENSE0: 512
+    NODES_DENSE1: 32
+    LR: 0.00001
+    DROPOUT: 0.45
+    L2_LAMBDA: 0.001
   CUSTOM_RESNET:
     KERNEL_SIZE: (3,3)
     STRIDES: (1,1)
     INIT_FILTERS: 16
-    FILTER_EXP_BASE: 3
+    FILTER_EXP_BASE: 2
     MAXPOOL_SIZE: (2,2)
-    CONV_BLOCKS: 3
-    NODES_DENSE0: 128
-    LR: 0.0001
+    CONV_BLOCKS: 6
+    NODES_DENSE0: 256
+    NODES_DENSE1: 64
+    LR: 0.00005
     OPTIMIZER: 'adam'
-    DROPOUT: 0.4
-    L2_LAMBDA: 0.0001
+    DROPOUT: 0.45
+    L2_LAMBDA: 0.00001
 
