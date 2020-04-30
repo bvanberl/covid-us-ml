@@ -39,8 +39,9 @@ def train_model(cfg, data, callbacks, verbose=1):
     '''
 
     # Create ImageDataGenerators. For training data: randomly zoom, stretch, horizontally flip image as data augmentation.
-    train_img_gen = ImageDataGenerator(zoom_range=0.1, horizontal_flip=True, width_shift_range=0.1,
-                                       height_shift_range=0.1, samplewise_std_normalization=True,
+    train_img_gen = ImageDataGenerator(zoom_range=0.15, horizontal_flip=True, width_shift_range=0.2,
+                                       height_shift_range=0.2, shear_range=5, rotation_range=20,
+                                       brightness_range=[0.8,1.3], samplewise_std_normalization=True,
                                        samplewise_center=True)
     val_img_gen = ImageDataGenerator(samplewise_std_normalization=True, samplewise_center=True)
     test_img_gen = ImageDataGenerator(samplewise_std_normalization=True, samplewise_center=True)
@@ -87,11 +88,18 @@ def train_model(cfg, data, callbacks, verbose=1):
         model_def = custom_resnet
 
     n_classes = len(cfg['DATA']['CLASSES'])
-    model = model_def(cfg['NN'][cfg['TRAIN']['MODEL_DEF'].upper()], input_shape, metrics, n_classes)
+
+    # Compute output bias
+    histogram = np.bincount(data['TRAIN']['label'].astype(int))
+    output_bias = np.log([histogram[i] / (np.sum(histogram) - histogram[i]) for i in range(histogram.shape[0])])
+
+
+    # Define model
+    model = model_def(cfg['NN'][cfg['TRAIN']['MODEL_DEF'].upper()], input_shape, metrics, n_classes,
+                      output_bias=output_bias)
 
     # Train the model.
-    #steps_per_epoch = ceil(train_generator.n / train_generator.batch_size)
-    steps_per_epoch = 20
+    steps_per_epoch = ceil(train_generator.n / train_generator.batch_size)
     val_steps = ceil(val_generator.n / val_generator.batch_size)
     history = model.fit_generator(train_generator, steps_per_epoch=steps_per_epoch, epochs=cfg['TRAIN']['EPOCHS'],
                                   validation_data=val_generator, validation_steps=val_steps, callbacks=callbacks,
@@ -180,7 +188,9 @@ def train_experiment(cfg=None, experiment='single_train', save_weights=True, wri
     # Set callbacks.
     early_stopping = EarlyStopping(monitor='val_loss', verbose=1, patience=cfg['TRAIN']['PATIENCE'], mode='min',
                                    restore_best_weights=True)
-    callbacks = [early_stopping]
+    reduce_lr = ReduceLROnPlateau(monitor='val_loss', factor=0.1, patience=cfg['TRAIN']['PATIENCE'] // 2, verbose=1,
+                                  min_lr=1e-8, min_delta=0.0001)
+    callbacks = [early_stopping, reduce_lr]
 
     # Conduct the desired train experiment
     if experiment == 'single_train':
