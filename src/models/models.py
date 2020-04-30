@@ -3,25 +3,32 @@ from tensorflow.keras.layers import Dense, Conv2D, MaxPool2D, Flatten, Dropout, 
                                     Activation, concatenate, GlobalAveragePooling2D
 from tensorflow.keras.regularizers import l2
 from tensorflow.keras.optimizers import Adam
-from tensorflow.keras.applications.resnet_v2 import ResNet50V2
+from tensorflow.keras.initializers import Constant
+from tensorflow.keras.applications.resnet_v2 import ResNet50V2, ResNet101V2
 
 
-def resnet50v2(model_config, input_shape, metrics, n_classes=2):
+def resnet50v2(model_config, input_shape, metrics, n_classes=2, output_bias=None):
     '''
     Defines a model based on a pretrained ResNet50V2 for multiclass X-ray classification.
     :param model_config: A dictionary of parameters associated with the model architecture
     :param input_shape: The shape of the model input
     :param metrics: Metrics to track model's performance
+    :param n_classes: # of classes in data
+    :param output_bias: bias initializer of output layer
     :return: a Keras Model object with the architecture defined in this method
     '''
 
     # Set hyperparameters
     nodes_dense0 = model_config['NODES_DENSE0']
+    nodes_dense1 = model_config['NODES_DENSE1']
     lr = model_config['LR']
     dropout = model_config['DROPOUT']
     l2_lambda = model_config['L2_LAMBDA']
     optimizer = Adam(learning_rate=lr)
     print("MODEL CONFIG: ", model_config)
+
+    if output_bias is not None:
+        output_bias = Constant(output_bias)     # Set initial output bias
 
     # Start with pretrained ResNet50V2
     X_input = Input(input_shape, name='input')
@@ -31,9 +38,10 @@ def resnet50v2(model_config, input_shape, metrics, n_classes=2):
     # Add custom top layers
     X = GlobalAveragePooling2D()(X)
     X = Dropout(dropout)(X)
-    X = Dense(nodes_dense0, kernel_initializer='he_uniform', activity_regularizer=l2(l2_lambda))(X)
-    X = LeakyReLU()(X)
-    X = Dense(n_classes)(X)
+    X = Dense(nodes_dense0, kernel_initializer='he_uniform', activation='relu', activity_regularizer=l2(l2_lambda))(X)
+    X = Dropout(dropout)(X)
+    X = Dense(nodes_dense1, kernel_initializer='he_uniform', activation='relu', activity_regularizer=l2(l2_lambda))(X)
+    X = Dense(n_classes, bias_initializer=output_bias)(X)
     Y = Activation('softmax', dtype='float32', name='output')(X)
 
     # Set model loss function, optimizer, metrics.
@@ -43,12 +51,14 @@ def resnet50v2(model_config, input_shape, metrics, n_classes=2):
     return model
 
 
-def custom_resnet(model_config, input_shape, metrics, n_classes=2):
+def custom_resnet(model_config, input_shape, metrics, n_classes=2, output_bias=None):
     '''
     Defines a deep convolutional neural network model for multiclass X-ray classification.
     :param model_config: A dictionary of parameters associated with the model architecture
     :param input_shape: The shape of the model input
     :param metrics: Metrics to track model's performance
+    :param n_classes: # of classes in data
+    :param output_bias: bias initializer of output layer
     :return: a Keras Model object with the architecture defined in this method
     '''
 
@@ -65,6 +75,9 @@ def custom_resnet(model_config, input_shape, metrics, n_classes=2):
     max_pool_size = eval(model_config['MAXPOOL_SIZE'])
     strides = eval(model_config['STRIDES'])
     print("MODEL CONFIG: ", model_config)
+
+    if output_bias is not None:
+        output_bias = Constant(output_bias)     # Set initial output bias
 
     # Input layer
     X_input = Input(input_shape)
@@ -91,7 +104,7 @@ def custom_resnet(model_config, input_shape, metrics, n_classes=2):
     X = Dropout(dropout)(X)
     X = Dense(nodes_dense0, kernel_initializer='he_uniform', activity_regularizer=l2(l2_lambda))(X)
     X = LeakyReLU()(X)
-    X = Dense(n_classes)(X)
+    X = Dense(n_classes, bias_initializer=output_bias)(X)
     Y = Activation('softmax', dtype='float32', name='output')(X)
 
     # Set model loss function, optimizer, metrics.
