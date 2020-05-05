@@ -8,7 +8,7 @@ import numpy as np
 from sklearn.metrics import confusion_matrix, roc_curve
 
 # Set some matplotlib parameters
-mpl.rcParams['figure.figsize'] = (12, 10)
+mpl.rcParams['figure.figsize'] = (12, 8)
 
 def plot_to_tensor():
     '''
@@ -75,12 +75,12 @@ def visualize_heatmap(orig_img, heatmap, img_filename, label, probs, class_names
 
     # Display some information about the example
     pred_class = np.argmax(probs)
-    fig.text(0.02, 0.8, "Prediction probabilities: " + str(['{:.2f}'.format(probs[i]) for i in range(len(probs))]),
-             fontsize=10)
-    fig.text(0.02, 0.82, "Predicted Class: " + str(pred_class) + ' (' + class_names[pred_class] + ')', fontsize=10)
+    fig.text(0.02, 0.92, "Prediction probabilities for: " + str(class_names) + ': ' +
+             str(['{:.2f}'.format(probs[i]) for i in range(len(probs))]), fontsize=10)
+    fig.text(0.02, 0.94, "Predicted Class: " + str(pred_class) + ' (' + class_names[pred_class] + ')', fontsize=10)
     if label is not None:
-        fig.text(0.02, 0.84, "Ground Truth Class: " + str(label) + ' (' + class_names[label] + ')', fontsize=10)
-    fig.suptitle("Grad-CAM heatmap for image " + img_filename, fontsize=13)
+        fig.text(0.02, 0.96, "Ground Truth Class: " + str(label) + ' (' + class_names[label] + ')', fontsize=10)
+    fig.suptitle("Grad-CAM heatmap for image " + img_filename, fontsize=12, fontweight='bold')
     fig.tight_layout()
 
     # Save the image
