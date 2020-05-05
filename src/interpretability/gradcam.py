@@ -71,7 +71,7 @@ def apply_gradcam(setup_dict, idx, hm_intensity=0.5, save_hm=True):
     probs = [probs[0][setup_dict['CLASSES'].index(c)] for c in setup_dict['TEST_GENERATOR'].class_indices]
 
     with tf.GradientTape() as tape:
-        last_conv_layer = setup_dict['MODEL'].get_layer('model').get_layer(setup_dict['LAYER_NAME'])
+        last_conv_layer = setup_dict['MODEL'].get_layer(setup_dict['LAYER_NAME'])
         iterate = Model([setup_dict['MODEL'].inputs], [setup_dict['MODEL'].output, last_conv_layer.output])
         model_out, last_conv_layer = iterate(x)
         class_out = model_out[:, np.argmax(model_out[0])]
