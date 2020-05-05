@@ -11,6 +11,7 @@ PATHS:
   TEST_ENCOUNTERS: 'data/preprocessed/test_encounters.csv'
   GEN_IMAGES: 'documents/generated_images/'
   LOGS: 'results\\logs\\'
+  IMAGES: 'documents/generated_images/'
   MODEL_WEIGHTS: 'results/models/'
   MODEL_TO_LOAD: 'results/models/model.h5'
   OUTPUT_CLASS_INDICES: './data/serializations/output_class_indices.pkl'
