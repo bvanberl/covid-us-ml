@@ -7,7 +7,7 @@ from tensorflow.keras.initializers import Constant
 from tensorflow.keras.applications.resnet_v2 import ResNet50V2, ResNet101V2
 
 
-def resnet50v2(model_config, input_shape, metrics, n_classes=2, output_bias=None):
+def resnet50v2(model_config, input_shape, metrics, n_classes, output_bias=None):
     '''
     Defines a model based on a pretrained ResNet50V2 for multiclass X-ray classification.
     :param model_config: A dictionary of parameters associated with the model architecture
@@ -51,7 +51,7 @@ def resnet50v2(model_config, input_shape, metrics, n_classes=2, output_bias=None
     return model
 
 
-def custom_resnet(model_config, input_shape, metrics, n_classes=2, output_bias=None):
+def custom_resnet(model_config, input_shape, metrics, n_classes, output_bias=None):
     '''
     Defines a deep convolutional neural network model for multiclass X-ray classification.
     :param model_config: A dictionary of parameters associated with the model architecture

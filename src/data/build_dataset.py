@@ -40,18 +40,11 @@ def build_encounter_dataframe(cfg):
     # Get paths of raw datasets to be included
     ncovid_data_path = cfg['PATHS']['NCOVID_DATA']
     covid_data_path = cfg['PATHS']['COVID_DATA']
+    smooth_data_path = cfg['PATHS']['SMOOTH_DATA']
 
     class_dict = {cfg['DATA']['CLASSES'][i]: i for i in range(len(cfg['DATA']['CLASSES']))}  # Map class name to number
 
-    # Label all non-COVID-19 encounters
-    ncovid_encounter_dirs = []
-    for encounter_dir in os.listdir(ncovid_data_path):
-        encounter_dir = os.path.join(ncovid_data_path, encounter_dir).replace("\\","/")
-        if (os.path.isdir(encounter_dir)):
-            ncovid_encounter_dirs.append(encounter_dir)
-    ncovid_encounter_df = pd.DataFrame({'encounter': ncovid_encounter_dirs, 'label': class_dict['NCOVID']})
-
-    # Label all COVID-19 encounters
+    # Label all encounters for COVID-19 class
     covid_encounter_dirs = []
     for encounter_dir in os.listdir(covid_data_path):
         encounter_dir = os.path.join(covid_data_path, encounter_dir).replace("\\","/")
@@ -59,7 +52,24 @@ def build_encounter_dataframe(cfg):
             covid_encounter_dirs.append(encounter_dir)
     covid_encounter_df = pd.DataFrame({'encounter': covid_encounter_dirs, 'label': class_dict['COVID']})
 
-    encounter_df = pd.concat([ncovid_encounter_df, covid_encounter_df], axis=0)  # Combine both datasets
+    # Label all encounters for COVID-19 class
+    ncovid_encounter_dirs = []
+    for encounter_dir in os.listdir(ncovid_data_path):
+        encounter_dir = os.path.join(ncovid_data_path, encounter_dir).replace("\\","/")
+        if (os.path.isdir(encounter_dir)):
+            ncovid_encounter_dirs.append(encounter_dir)
+    ncovid_encounter_df = pd.DataFrame({'encounter': ncovid_encounter_dirs, 'label': class_dict['NCOVID']})
+
+    # Label all encounters for COVID-19 class
+    smooth_encounter_dirs = []
+    for encounter_dir in os.listdir(smooth_data_path):
+        encounter_dir = os.path.join(smooth_data_path, encounter_dir).replace("\\","/")
+        if (os.path.isdir(encounter_dir)):
+            smooth_encounter_dirs.append(encounter_dir)
+    smooth_encounter_df = pd.DataFrame({'encounter': smooth_encounter_dirs, 'label': class_dict['SMOOTH']})
+
+    # Combine all encounters data
+    encounter_df = pd.concat([ncovid_encounter_df, covid_encounter_df, smooth_encounter_df], axis=0)
     return encounter_df
 
 
