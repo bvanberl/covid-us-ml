@@ -129,10 +129,9 @@ def log_test_results(cfg, model, test_generator, test_metrics, log_dir):
     # Visualization of test results
     test_predictions = model.predict_generator(test_generator, verbose=0)
     test_labels = test_generator.labels
-    covid_idx = test_generator.class_indices['COVID']
-    plt = plot_roc("Test set", test_labels, test_predictions, class_id=covid_idx)
+    plt = plot_roc(test_labels, test_predictions, list(test_generator.class_indices.keys()), dir_path=cfg['PATHS']['IMAGES'])
     roc_img = plot_to_tensor()
-    plt = plot_confusion_matrix(test_labels, test_predictions, class_id=covid_idx)
+    plt = plot_confusion_matrix(test_labels, test_predictions, list(test_generator.class_indices.keys()), dir_path=cfg['PATHS']['IMAGES'])
     cm_img = plot_to_tensor()
 
     # Log test set results and plots in TensorBoard

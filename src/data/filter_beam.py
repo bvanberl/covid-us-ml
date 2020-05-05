@@ -69,13 +69,15 @@ def filter_beam(orig_img, triangles_mask=True):
     mask = np.zeros(orig_img.shape, np.uint8)
     cv2.fillPoly(mask, [beam_contour], [255,255,255])               # Create the mask by filling in the contour with white.
 
-    # Attempt to filter out triangles in top corners of image
+    # Attempt to filter out triangles in top corners of image (LEAVE OUT FOR NOW)
+    '''
     if triangles_mask:
         try:
             triangle_mask = refine_mask(mask)
             mask = cv2.bitwise_and(mask, triangle_mask)
         except:
             pass
+    '''
 
     final_img = cv2.bitwise_and(orig_img, mask)    # Mask everything out but the US beam.
     return final_img

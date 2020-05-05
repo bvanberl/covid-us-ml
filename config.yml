@@ -1,7 +1,8 @@
 PATHS:
-  RAW_DATA: 'C:/Users/rober/Documents/Data/covid-us-ml/'               # Path to folder containing all raw data (COVID, NCOVID)
-  NCOVID_DATA: 'C:/Users/rober/Documents/Data/covid-us-ml/NCOVID'      # Path to non-COVID-19 raw data
-  COVID_DATA: 'C:/Users/rober/Documents/Data/covid-us-ml/COVID'       # Path to COVID-19 raw data
+  RAW_DATA: 'D:/Documents/Data/covid-us-ml/raw/'                      # Path to folder containing all raw data
+  COVID_DATA: 'D:/Documents/Data/covid-us-ml/raw/COVID/'        # Path to COVID raw data
+  NCOVID_DATA: 'D:/Documents/Data/covid-us-ml/raw/NCOVID/'      # Path to NCOVID raw data
+  SMOOTH_DATA: 'D:/Documents/Data/covid-us-ml/raw/SMOOTH/'      # Path to SMOOTH raw data
   PROCESSED_DATA: 'data/preprocessed/'
   TRAIN_SET: 'data/preprocessed/train_set.csv'
   VAL_SET: 'data/preprocessed/val_set.csv'
@@ -21,12 +22,12 @@ DATA:
   IMG_DIM: [224, 224]
   VAL_SPLIT: 0.08
   TEST_SPLIT: 0.1
-  CLASSES: ['NCOVID', 'COVID']                   # Classes for binary classification
+  CLASSES: ['COVID', 'NCOVID', 'SMOOTH']                   # Classes for binary classification
 
 TRAIN:
   MODEL_DEF: 'custom_resnet'                                # One of {'resnet50v2', 'custom_resnet'}
-  CLASS_MULTIPLIER: [1.0, 1.0]                           # Class multiplier for classes
-  EXPERIMENT_TYPE: 'single_train'                        # One of {'single_train'}
+  CLASS_MULTIPLIER: [1.0, 1.0, 1.0]                         # Class multiplier for classes
+  EXPERIMENT_TYPE: 'single_train'                           # One of {'single_train'}
   BATCH_SIZE: 64
   EPOCHS: 300
   PATIENCE: 7
