@@ -37,8 +37,7 @@ def setup_gradcam():
     setup_dict['CLASSES'] = cfg['DATA']['CLASSES']
 
     # Create ImageDataGenerator for test set
-    test_img_gen = ImageDataGenerator(preprocessing_function=remove_text,
-                                       samplewise_std_normalization=True, samplewise_center=True)
+    test_img_gen = ImageDataGenerator(samplewise_std_normalization=True, samplewise_center=True)
     test_generator = test_img_gen.flow_from_dataframe(dataframe=setup_dict['TEST_SET'],
                                                       directory=cfg['PATHS']['RAW_DATA'],
                                                       x_col="filename", y_col='label_str',
