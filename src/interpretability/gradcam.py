@@ -7,7 +7,6 @@ import tensorflow as tf
 from tensorflow.keras.models import load_model
 from tensorflow.keras.preprocessing.image import ImageDataGenerator
 from tensorflow.keras.models import Model
-from src.data.preprocess import remove_text
 from src.predict import predict_instance
 from src.visualization.visualize import visualize_heatmap
 
