@@ -32,6 +32,7 @@ TRAIN:
   EPOCHS: 300
   PATIENCE: 7
   METRIC_PREFERENCE: ['auc', 'recall', 'precision', 'loss']
+  NUM_RUNS: 10
 
 NN:
   RESNET50V2:
