@@ -27,7 +27,7 @@ DATA:
 TRAIN:
   MODEL_DEF: 'custom_resnet'                                # One of {'resnet50v2', 'custom_resnet'}
   CLASS_MULTIPLIER: [1.0, 1.0, 1.0]                         # Class multiplier for classes
-  EXPERIMENT_TYPE: 'single_train'                           # One of {'single_train'}
+  EXPERIMENT_TYPE: 'single_train'                           # One of {'single_train', 'multi_train', 'hparam_search'}
   BATCH_SIZE: 64
   EPOCHS: 300
   PATIENCE: 7
@@ -54,4 +54,21 @@ NN:
     OPTIMIZER: 'adam'
     DROPOUT: 0.45
     L2_LAMBDA: 0.00001
+
+HP_SEARCH:
+  METRICS: ['accuracy', 'loss', 'recall', 'precision', 'auc']
+  COMBINATIONS: 50
+  REPEATS: 2
+  RANGES:
+    KERNEL_SIZE: ['(3,3)', '(5,5)']     # Discrete range
+    MAXPOOL_SIZE: ['(2,2)', '(3,3)']    # Discrete range
+    INIT_FILTERS: [8, 16, 32]           # Discrete range
+    FILTER_EXP_BASE: [2, 3]             # Int range
+    NODES_DENSE0: [128, 256, 512, 1024] # Discrete range
+    NODES_DENSE1: [32, 64]              # Discrete range
+    CONV_BLOCKS: [3, 8]                 # Int range
+    DROPOUT: [0.2, 0.4]                 # Real range
+    LR: [-5.0, -3.0]                    # Real range on log scale (10^x)
+    L2_LAMBDA: [-5.0, -4.0]             # Real range on log scale (10^x)
+    BATCH_SIZE: [32, 64]                # Discrete range
 
