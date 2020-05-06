@@ -28,6 +28,20 @@ def get_class_weights(histogram, class_multiplier=None):
     return class_weight
 
 
+def define_callbacks(cfg):
+    '''
+    Defines a list of Keras callbacks to be applied to model training loop
+    :param cfg: Project config object
+    :return: list of Keras callbacks
+    '''
+    early_stopping = EarlyStopping(monitor='val_loss', verbose=1, patience=cfg['TRAIN']['PATIENCE'], mode='min',
+                                   restore_best_weights=True)
+    reduce_lr = ReduceLROnPlateau(monitor='val_loss', factor=0.1, patience=cfg['TRAIN']['PATIENCE'] // 2, verbose=1,
+                                  min_lr=1e-8, min_delta=0.0001)
+    callbacks = [early_stopping, reduce_lr]
+    return callbacks
+
+
 def train_model(cfg, data, callbacks, verbose=1):
     '''
     Train a and evaluate model on given data.
@@ -235,11 +249,7 @@ def train_experiment(cfg=None, experiment='single_train', save_weights=True, wri
     data['TEST'] = pd.read_csv(cfg['PATHS']['TEST_SET'])
 
     # Set callbacks.
-    early_stopping = EarlyStopping(monitor='val_loss', verbose=1, patience=cfg['TRAIN']['PATIENCE'], mode='min',
-                                   restore_best_weights=True)
-    reduce_lr = ReduceLROnPlateau(monitor='val_loss', factor=0.1, patience=cfg['TRAIN']['PATIENCE'] // 2, verbose=1,
-                                  min_lr=1e-8, min_delta=0.0001)
-    callbacks = [early_stopping, reduce_lr]
+    callbacks = define_callbacks(cfg)
 
     # Conduct the desired train experiment
     if experiment == 'multi_train':
