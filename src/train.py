@@ -28,6 +28,20 @@ def get_class_weights(histogram, class_multiplier=None):
     return class_weight
 
 
+def define_callbacks(cfg):
+    '''
+    Defines a list of Keras callbacks to be applied to model training loop
+    :param cfg: Project config object
+    :return: list of Keras callbacks
+    '''
+    early_stopping = EarlyStopping(monitor='val_loss', verbose=1, patience=cfg['TRAIN']['PATIENCE'], mode='min',
+                                   restore_best_weights=True)
+    reduce_lr = ReduceLROnPlateau(monitor='val_loss', factor=0.1, patience=cfg['TRAIN']['PATIENCE'] // 2, verbose=1,
+                                  min_lr=1e-8, min_delta=0.0001)
+    callbacks = [early_stopping, reduce_lr]
+    return callbacks
+
+
 def train_model(cfg, data, callbacks, verbose=1):
     '''
     Train a and evaluate model on given data.
@@ -116,6 +130,56 @@ def train_model(cfg, data, callbacks, verbose=1):
     return model, test_metrics, test_generator
 
 
+def multi_train(cfg, data, callbacks, base_log_dir):
+    '''
+    Trains a model a series of times and returns the model with the best test set metric (specified in cfg)
+    :param cfg: Project config (from config.yml)
+    :param data: Partitioned dataset
+    :param callbacks: List of callbacks to pass to model.fit()
+    :param base_log_dir: Base directory to write logs
+    :return: The trained Keras model with best test set performance on the metric specified in cfg
+    '''
+
+    # Load order of metric preference
+    metric_preference = cfg['TRAIN']['METRIC_PREFERENCE']
+    best_metrics = dict.fromkeys(metric_preference, 0.0)
+    if 'loss' in metric_preference:
+        best_metrics['loss'] = 100000.0
+
+    # Train NUM_RUNS models and return the best one according to the preferred metrics
+    for i in range(cfg['TRAIN']['NUM_RUNS']):
+        print("Training run ", i+1, " / ", cfg['TRAIN']['NUM_RUNS'])
+        cur_callbacks = callbacks.copy()
+        cur_date = datetime.datetime.now().strftime('%Y%m%d-%H%M%S')
+        if base_log_dir is not None:
+            log_dir = base_log_dir + cur_date
+            cur_callbacks.append(TensorBoard(log_dir=log_dir, histogram_freq=1))
+
+        # Train the model and evaluate performance on test set
+        new_model, test_metrics, test_generator = train_model(cfg, data, cur_callbacks, verbose=1)
+
+        # Log test set results and images
+        if base_log_dir is not None:
+            log_test_results(cfg, new_model, test_generator, test_metrics, log_dir)
+
+        # If this model outperforms the previous ones based on the specified metric preferences, save this one.
+        for i in range(len(metric_preference)):
+            if (((metric_preference[i] == 'loss') and (test_metrics[metric_preference[i]] < best_metrics[metric_preference[i]]))
+                    or ((metric_preference[i] != 'loss') and (test_metrics[metric_preference[i]] > best_metrics[metric_preference[i]]))):
+                best_model = new_model
+                best_metrics = test_metrics
+                best_generator = test_generator
+                best_model_date = cur_date
+                break
+            elif (test_metrics[metric_preference[i]] == best_metrics[metric_preference[i]]):
+                continue
+            else:
+                break
+
+    print("Best model test metrics: ", best_metrics)
+    return best_model, best_metrics, best_generator, best_model_date
+
+
 def log_test_results(cfg, model, test_generator, test_metrics, log_dir):
     '''
     Visualize performance of a trained model on the test set. Optionally save the model.
@@ -185,14 +249,13 @@ def train_experiment(cfg=None, experiment='single_train', save_weights=True, wri
     data['TEST'] = pd.read_csv(cfg['PATHS']['TEST_SET'])
 
     # Set callbacks.
-    early_stopping = EarlyStopping(monitor='val_loss', verbose=1, patience=cfg['TRAIN']['PATIENCE'], mode='min',
-                                   restore_best_weights=True)
-    reduce_lr = ReduceLROnPlateau(monitor='val_loss', factor=0.1, patience=cfg['TRAIN']['PATIENCE'] // 2, verbose=1,
-                                  min_lr=1e-8, min_delta=0.0001)
-    callbacks = [early_stopping, reduce_lr]
+    callbacks = define_callbacks(cfg)
 
     # Conduct the desired train experiment
-    if experiment == 'single_train':
+    if experiment == 'multi_train':
+        base_log_dir = cfg['PATHS']['LOGS'] + "training\\" if write_logs else None
+        model, test_metrics, test_generator, cur_date = multi_train(cfg, data, callbacks, base_log_dir)
+    else:
         if write_logs:
             tensorboard = TensorBoard(log_dir=log_dir, histogram_freq=1)
             callbacks.append(tensorboard)
