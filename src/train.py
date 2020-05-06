@@ -204,7 +204,7 @@ def random_hparam_search(cfg, data, callbacks, log_dir):
     HPARAMS.append(hp.HParam('CONV_BLOCKS', hp.IntInterval(hp_ranges['CONV_BLOCKS'][0], hp_ranges['CONV_BLOCKS'][1])))
     HPARAMS.append(hp.HParam('DROPOUT', hp.RealInterval(hp_ranges['DROPOUT'][0], hp_ranges['DROPOUT'][1])))
     HPARAMS.append(hp.HParam('LR', hp.RealInterval(hp_ranges['LR'][0], hp_ranges['LR'][1])))
-    HPARAMS.append(hp.HParam('LAMBDA_L2', hp.RealInterval(hp_ranges['LAMBDA_L2'][0], hp_ranges['LAMBDA_L2'][1])))
+    HPARAMS.append(hp.HParam('L2_LAMBDA', hp.RealInterval(hp_ranges['L2_LAMBDA'][0], hp_ranges['L2_LAMBDA'][1])))
     HPARAMS.append(hp.HParam('BATCH_SIZE', hp.Discrete(hp_ranges['BATCH_SIZE'])))
 
     # Define test set metrics that we wish to log to TensorBoard for each training run

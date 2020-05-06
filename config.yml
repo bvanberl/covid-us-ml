@@ -27,7 +27,7 @@ DATA:
 TRAIN:
   MODEL_DEF: 'custom_resnet'                                # One of {'resnet50v2', 'custom_resnet'}
   CLASS_MULTIPLIER: [1.0, 1.0, 1.0]                         # Class multiplier for classes
-  EXPERIMENT_TYPE: 'single_train'                           # One of {'single_train'}
+  EXPERIMENT_TYPE: 'single_train'                           # One of {'single_train', 'multi_train', 'hparam_search'}
   BATCH_SIZE: 64
   EPOCHS: 300
   PATIENCE: 7
