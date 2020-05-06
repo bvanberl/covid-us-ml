@@ -1,12 +1,14 @@
 import pandas as pd
 import yaml
 import dill
+import random
 import tensorflow.summary as tf_summary
 from math import ceil
 from tensorflow.keras.metrics import BinaryAccuracy, CategoricalAccuracy, Precision, Recall, AUC
 from tensorflow.keras.models import save_model
 from tensorflow.keras.callbacks import EarlyStopping, TensorBoard, ReduceLROnPlateau
 from tensorflow.keras.preprocessing.image import ImageDataGenerator
+from tensorboard.plugins.hparams import api as hp
 from src.models.models import *
 from src.visualization.visualize import *
 
@@ -180,6 +182,75 @@ def multi_train(cfg, data, callbacks, base_log_dir):
     return best_model, best_metrics, best_generator, best_model_date
 
 
+def random_hparam_search(cfg, data, callbacks, log_dir):
+    '''
+    Conduct a random hyperparameter search over the ranges given for the hyperparameters in config.yml and log results
+    in TensorBoard. Model is trained x times for y random combinations of hyperparameters.
+    :param cfg: Project config
+    :param data: Dict containing the partitioned datasets
+    :param callbacks: List of callbacks for Keras model (excluding TensorBoard)
+    :param log_dir: Base directory in which to store logs
+    '''
+
+    # Define HParam objects for each hyperparameter we wish to tune.
+    hp_ranges = cfg['HP_SEARCH']['RANGES']
+    HPARAMS = []
+    HPARAMS.append(hp.HParam('KERNEL_SIZE', hp.Discrete(hp_ranges['KERNEL_SIZE'])))
+    HPARAMS.append(hp.HParam('MAXPOOL_SIZE', hp.Discrete(hp_ranges['MAXPOOL_SIZE'])))
+    HPARAMS.append(hp.HParam('INIT_FILTERS', hp.Discrete(hp_ranges['INIT_FILTERS'])))
+    HPARAMS.append(hp.HParam('FILTER_EXP_BASE', hp.IntInterval(hp_ranges['FILTER_EXP_BASE'][0], hp_ranges['FILTER_EXP_BASE'][1])))
+    HPARAMS.append(hp.HParam('NODES_DENSE0', hp.Discrete(hp_ranges['NODES_DENSE0'])))
+    HPARAMS.append(hp.HParam('NODES_DENSE1', hp.Discrete(hp_ranges['NODES_DENSE1'])))
+    HPARAMS.append(hp.HParam('CONV_BLOCKS', hp.IntInterval(hp_ranges['CONV_BLOCKS'][0], hp_ranges['CONV_BLOCKS'][1])))
+    HPARAMS.append(hp.HParam('DROPOUT', hp.RealInterval(hp_ranges['DROPOUT'][0], hp_ranges['DROPOUT'][1])))
+    HPARAMS.append(hp.HParam('LR', hp.RealInterval(hp_ranges['LR'][0], hp_ranges['LR'][1])))
+    HPARAMS.append(hp.HParam('LAMBDA_L2', hp.RealInterval(hp_ranges['LAMBDA_L2'][0], hp_ranges['LAMBDA_L2'][1])))
+    HPARAMS.append(hp.HParam('BATCH_SIZE', hp.Discrete(hp_ranges['BATCH_SIZE'])))
+
+    # Define test set metrics that we wish to log to TensorBoard for each training run
+    HP_METRICS = [hp.Metric(metric, display_name='Test ' + metric) for metric in cfg['HP_SEARCH']['METRICS']]
+
+    # Configure TensorBoard to log the results
+    with tf.summary.create_file_writer(log_dir).as_default():
+        hp.hparams_config(hparams=HPARAMS, metrics=HP_METRICS)
+
+    # Complete a number of training runs at different hparam values and log the results.
+    repeats_per_combo = cfg['HP_SEARCH']['REPEATS']   # Number of times to train the model per combination of hparams
+    num_combos = cfg['HP_SEARCH']['COMBINATIONS']     # Number of random combinations of hparams to attempt
+    num_sessions = num_combos * repeats_per_combo       # Total number of runs in this experiment
+    trial_id = 0
+    for group_idx in range(num_combos):
+        rand = random.Random()
+        HPARAMS = {h: h.domain.sample_uniform(rand) for h in HPARAMS}
+        hparams = {h.name: HPARAMS[h] for h in HPARAMS}  # To pass to model definition
+        for repeat_idx in range(repeats_per_combo):
+            trial_id += 1
+            print("Running training session %d/%d" % (trial_id, num_sessions))
+            print("Hparam values: ", {h.name: HPARAMS[h] for h in HPARAMS})
+            trial_logdir = os.path.join(log_dir, str(trial_id))     # Need specific logdir for each trial
+            callbacks_hp = callbacks + [TensorBoard(log_dir=trial_logdir, profile_batch=0, write_graph=False)]
+
+            # Set values of hyperparameters for this run in config file.
+            for h in hparams:
+                if h in ['LR', 'L2_LAMBDA']:
+                    val = 10 ** hparams[h]      # These hyperparameters are sampled on the log scale.
+                else:
+                    val = hparams[h]
+                cfg['NN'][cfg['TRAIN']['MODEL_DEF'].upper()][h] = val
+
+            # Set some hyperparameters that are not specified in model definition.
+            cfg['TRAIN']['BATCH_SIZE'] = hparams['BATCH_SIZE']
+
+            # Run a training session and log the performance metrics on the test set to HParams dashboard in TensorBoard
+            with tf.summary.create_file_writer(trial_logdir).as_default():
+                hp.hparams(HPARAMS, trial_id=str(trial_id))
+                model, test_metrics, test_generator = train_model(cfg, data, callbacks_hp, verbose=0)
+                for metric in HP_METRICS:
+                    if metric._tag in test_metrics:
+                        tf.summary.scalar(metric._tag, test_metrics[metric._tag], step=1)   # Log test metric
+    return
+
+
 def log_test_results(cfg, model, test_generator, test_metrics, log_dir):
     '''
     Visualize performance of a trained model on the test set. Optionally save the model.
@@ -252,19 +323,23 @@ def train_experiment(cfg=None, experiment='single_train', save_weights=True, wri
     callbacks = define_callbacks(cfg)
 
     # Conduct the desired train experiment
-    if experiment == 'multi_train':
-        base_log_dir = cfg['PATHS']['LOGS'] + "training\\" if write_logs else None
-        model, test_metrics, test_generator, cur_date = multi_train(cfg, data, callbacks, base_log_dir)
+    if experiment == 'hparam_search':
+        log_dir = cfg['PATHS']['LOGS'] + "hparam_search\\" + cur_date
+        random_hparam_search(cfg, data, callbacks, log_dir)
     else:
-        if write_logs:
-            tensorboard = TensorBoard(log_dir=log_dir, histogram_freq=1)
-            callbacks.append(tensorboard)
-        model, test_metrics, test_generator = train_model(cfg, data, callbacks)
-        if write_logs:
-            log_test_results(cfg, model, test_generator, test_metrics, log_dir)
-    if save_weights:
-        model_path = cfg['PATHS']['MODEL_WEIGHTS'] + 'model' + cur_date + '.h5'
-        save_model(model, model_path)  # Save the model's weights
+        if experiment == 'multi_train':
+            base_log_dir = cfg['PATHS']['LOGS'] + "training\\" if write_logs else None
+            model, test_metrics, test_generator, cur_date = multi_train(cfg, data, callbacks, base_log_dir)
+        else:
+            if write_logs:
+                tensorboard = TensorBoard(log_dir=log_dir, histogram_freq=1)
+                callbacks.append(tensorboard)
+            model, test_metrics, test_generator = train_model(cfg, data, callbacks)
+            if write_logs:
+                log_test_results(cfg, model, test_generator, test_metrics, log_dir)
+        if save_weights:
+            model_path = cfg['PATHS']['MODEL_WEIGHTS'] + 'model' + cur_date + '.h5'
+            save_model(model, model_path)  # Save the model's weights
     return
 
 
