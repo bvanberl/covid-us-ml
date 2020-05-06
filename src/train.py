@@ -201,7 +201,7 @@ def random_hparam_search(cfg, data, callbacks, log_dir):
     HPARAMS.append(hp.HParam('FILTER_EXP_BASE', hp.IntInterval(hp_ranges['FILTER_EXP_BASE'][0], hp_ranges['FILTER_EXP_BASE'][1])))
     HPARAMS.append(hp.HParam('NODES_DENSE0', hp.Discrete(hp_ranges['NODES_DENSE0'])))
     HPARAMS.append(hp.HParam('NODES_DENSE1', hp.Discrete(hp_ranges['NODES_DENSE1'])))
-    HPARAMS.append(hp.HParam('CONV_BLOCKS', hp.IntInterval(hp_ranges['CONV_BLOCKS'][0], hp_ranges['CONV_BLOCKS'][1])))
+    HPARAMS.append(hp.HParam('RES_BLOCKS', hp.IntInterval(hp_ranges['RES_BLOCKS'][0], hp_ranges['RES_BLOCKS'][1])))
     HPARAMS.append(hp.HParam('DROPOUT', hp.RealInterval(hp_ranges['DROPOUT'][0], hp_ranges['DROPOUT'][1])))
     HPARAMS.append(hp.HParam('LR', hp.RealInterval(hp_ranges['LR'][0], hp_ranges['LR'][1])))
     HPARAMS.append(hp.HParam('L2_LAMBDA', hp.RealInterval(hp_ranges['L2_LAMBDA'][0], hp_ranges['L2_LAMBDA'][1])))
