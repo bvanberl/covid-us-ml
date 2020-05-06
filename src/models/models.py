@@ -1,6 +1,6 @@
 from tensorflow.keras import Model
 from tensorflow.keras.layers import Dense, Conv2D, MaxPool2D, Flatten, Dropout, Input, LeakyReLU, BatchNormalization, \
-                                    Activation, concatenate, GlobalAveragePooling2D
+                                    Activation, Add, GlobalAveragePooling2D, ZeroPadding2D
 from tensorflow.keras.regularizers import l2
 from tensorflow.keras.optimizers import Adam
 from tensorflow.keras.initializers import Constant
@@ -51,9 +51,84 @@ def resnet50v2(model_config, input_shape, metrics, n_classes, output_bias=None):
     return model
 
 
+def convolutional_block(X, kernel_size, filters, stage, block, s=2):
+    '''
+    Implementation of a convolutional block to be used in a custom ResNet
+    :param X: input tensor
+    :param kernel_size: kernel size for middle convolutional layer
+    :param filters: list the number of filters in the CONV2D layers of the main path
+    :param stage: a number for naming the layers, depending on their position in the network
+    :param block: to name the layers, depending on their position in the network
+    :param s: stride in the CONV2D layers
+    :return output of the convolutional block
+    '''
+
+    conv_name_base = 'res' + str(stage) + block + '_branch'
+    bn_name_base = 'bn' + str(stage) + block + '_branch'
+    f1, f2, f3 = filters
+
+    X_res = X # Residual connection
+    X = Conv2D(f1, (1, 1), strides=s, name=conv_name_base + '2a', kernel_initializer='he_uniform')(X)
+    X = BatchNormalization(axis=3, name=bn_name_base + '2a')(X)
+    X = LeakyReLU()(X)
+
+    X = Conv2D(f2, kernel_size, strides=(1, 1), padding='same', name=conv_name_base + '2b',
+               kernel_initializer='he_uniform')(X)
+    X = BatchNormalization(axis=3, name=bn_name_base + '2b')(X)
+    X = LeakyReLU()(X)
+
+    X = Conv2D(f3, (1, 1), strides=(1, 1), padding='valid', name=conv_name_base + '2c',
+               kernel_initializer='he_uniform')(X)
+    X = BatchNormalization(axis=3, name=bn_name_base + '2c')(X)
+
+    X_res = Conv2D(f3, (1, 1), strides=s, padding='valid', name=conv_name_base + '1',
+                        kernel_initializer='he_uniform')(X_res)
+    X_res = BatchNormalization(axis=3, name=bn_name_base + '1')(X_res)
+
+    X = Add()([X, X_res])
+    X = LeakyReLU()(X)
+    return X
+
+
+def identity_block(X, kernel_size, filters, stage, block):
+    '''
+    Implementation of an identify block to be used in a custom ResNet
+    :param X: input tensor
+    :param kernel_size: kernel size for middle convolutional layer
+    :param filters: list the number of filters in the CONV2D layers of the main path
+    :param stage: a number for naming the layers, depending on their position in the network
+    :param block: to name the layers, depending on their position in the network
+    :return output of the convolutional block
+    '''
+
+    # Define naming strategy
+    conv_name_base = 'res' + str(stage) + block + '_branch'
+    bn_name_base = 'bn' + str(stage) + block + '_branch'
+    f1, f2, f3 = filters
+
+    X_res = X   # Residual connection
+    X = Conv2D(filters=f1, kernel_size=(1, 1), strides=(1, 1), padding='valid', name=conv_name_base + '2a',
+               kernel_initializer='he_uniform')(X)
+    X = BatchNormalization(axis=3, name=bn_name_base + '2a')(X)
+    X = LeakyReLU()(X)
+
+    X = Conv2D(filters=f2, kernel_size=kernel_size, strides=(1, 1), padding='same', name=conv_name_base + '2b',
+               kernel_initializer='he_uniform')(X)
+    X = BatchNormalization(axis=3, name=bn_name_base + '2b')(X)
+    X = LeakyReLU()(X)
+
+    X = Conv2D(filters=f3, kernel_size=(1, 1), strides=(1, 1), padding='valid', name=conv_name_base + '2c',
+               kernel_initializer='he_uniform')(X)
+    X = BatchNormalization(axis=3, name=bn_name_base + '2c')(X)
+
+    X = Add()([X, X_res])
+    X = LeakyReLU()(X)
+    return X
+
+
 def custom_resnet(model_config, input_shape, metrics, n_classes, output_bias=None):
     '''
-    Defines a deep convolutional neural network model for multiclass X-ray classification.
+    Defines a deep convolutional neural network model with residual connections for multiclass image classification.
     :param model_config: A dictionary of parameters associated with the model architecture
     :param input_shape: The shape of the model input
     :param metrics: Metrics to track model's performance
@@ -70,11 +145,12 @@ def custom_resnet(model_config, input_shape, metrics, n_classes, output_bias=Non
     optimizer = Adam(learning_rate=lr)
     init_filters = model_config['INIT_FILTERS']
     filter_exp_base = model_config['FILTER_EXP_BASE']
-    conv_blocks = model_config['CONV_BLOCKS']
+    res_blocks = model_config['RES_BLOCKS']
     kernel_size = eval(model_config['KERNEL_SIZE'])
     max_pool_size = eval(model_config['MAXPOOL_SIZE'])
     strides = eval(model_config['STRIDES'])
     print("MODEL CONFIG: ", model_config)
+    pad = kernel_size[0] // 2
 
     if output_bias is not None:
         output_bias = Constant(output_bias)     # Set initial output bias
@@ -82,27 +158,26 @@ def custom_resnet(model_config, input_shape, metrics, n_classes, output_bias=Non
     # Input layer
     X_input = Input(input_shape)
     X = X_input
+    X = ZeroPadding2D((pad, pad))(X)
 
-    # Add convolutional (residual) blocks
-    for i in range(conv_blocks):
-        X_res = X
-        X = Conv2D(init_filters * (filter_exp_base ** i), kernel_size, strides=strides, padding='same',
-                         kernel_initializer='he_uniform', activity_regularizer=l2(l2_lambda),
-                         name='conv' + str(i) + '_0')(X)
-        X = BatchNormalization()(X)
-        X = LeakyReLU()(X)
-        X = Conv2D(init_filters * (filter_exp_base ** i), kernel_size, strides=strides, padding='same',
-                         kernel_initializer='he_uniform', activity_regularizer=l2(l2_lambda),
-                         name='conv' + str(i) + '_1')(X)
-        X = concatenate([X, X_res], name='concat' + str(i))
-        X = BatchNormalization()(X)
-        X = LeakyReLU()(X)
-        X = MaxPool2D(max_pool_size, padding='same')(X)
+    # Initialize the model with a convolutional layer
+    X = Conv2D(init_filters, kernel_size, strides=strides, name = 'conv0', kernel_initializer='he_uniform')(X)
+    X = BatchNormalization(axis = 3, name='bn_conv0')(X)
+    X = LeakyReLU()(X)
+    X = MaxPool2D(max_pool_size, padding='same', name='maxpool0')(X)
+
+    # Add residual blocks
+    for i in range(res_blocks):
+        f1 = f2 = init_filters * (filter_exp_base ** i)
+        f3 = init_filters * (filter_exp_base ** (i + 2))
+        X = convolutional_block(X, kernel_size=kernel_size, filters=[f1, f2, f3], stage=(i+1), block='a', s=strides)
+        X = identity_block(X, kernel_size=kernel_size, filters=[f1, f2, f3], stage=(i+1), block='b')
+        X = identity_block(X, kernel_size=kernel_size, filters=[f1, f2, f3], stage=(i+1), block='c')
 
     # Add fully connected layers
-    X = GlobalAveragePooling2D()(X)
+    X = GlobalAveragePooling2D(name='globalavgpool0')(X)
     X = Dropout(dropout)(X)
-    X = Dense(nodes_dense0, kernel_initializer='he_uniform', activity_regularizer=l2(l2_lambda))(X)
+    X = Dense(nodes_dense0, kernel_initializer='he_uniform', activity_regularizer=l2(l2_lambda), name='fc0')(X)
     X = LeakyReLU()(X)
     X = Dense(n_classes, bias_initializer=output_bias)(X)
     Y = Activation('softmax', dtype='float32', name='output')(X)

@@ -43,11 +43,11 @@ NN:
     L2_LAMBDA: 0.001
   CUSTOM_RESNET:
     KERNEL_SIZE: (3,3)
-    STRIDES: (1,1)
+    STRIDES: (2,2)
     INIT_FILTERS: 16
     FILTER_EXP_BASE: 2
     MAXPOOL_SIZE: (2,2)
-    CONV_BLOCKS: 6
+    RES_BLOCKS: 5
     NODES_DENSE0: 256
     NODES_DENSE1: 64
     LR: 0.00005
@@ -66,7 +66,7 @@ HP_SEARCH:
     FILTER_EXP_BASE: [2, 3]             # Int range
     NODES_DENSE0: [128, 256, 512, 1024] # Discrete range
     NODES_DENSE1: [32, 64]              # Discrete range
-    CONV_BLOCKS: [3, 8]                 # Int range
+    RES_BLOCKS: [3, 8]                 # Int range
     DROPOUT: [0.2, 0.4]                 # Real range
     LR: [-5.0, -3.0]                    # Real range on log scale (10^x)
     L2_LAMBDA: [-5.0, -4.0]             # Real range on log scale (10^x)
