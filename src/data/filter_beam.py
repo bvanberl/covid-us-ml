@@ -10,37 +10,125 @@ def refine_mask(mask):
              the image.
     '''
     edged = cv2.Canny(mask, 50, 255)    # Perform edge detection on the mask
-    lines = cv2.HoughLinesP(edged, rho=6, theta=np.pi / 60, threshold=160, lines=np.array([]), minLineLength=200,
-        maxLineGap=40)                  # Try line detection on mask edges
-    triangles = []
-    y_bot = mask.shape[0]
-    y_top = 0
-    x_left = 0
-    x_right = mask.shape[1]
+    lines = cv2.HoughLinesP(edged, rho=6, theta=np.pi / 60, threshold=100, lines=np.array([]), minLineLength=50,
+        maxLineGap=30)                  # Try line detection on mask edges
+    final_lines = []
 
-    # Extend the lines to the borders of the images. Then get triangles from the line endpoints and top corners of mask.
-    for line in lines[0:2]:
-        (x1, y1, x2, y2) = line[0]      # Get coordinates of endpoints of detected lines
-        if x2 - x1 == 0 or y2 - y1 == 0:                # If vertical or horizontal line, skip.
+    # For visualization purposes
+    # pointlist = []
+    # for i in range(edged.shape[0]):
+    #     for j in range(edged.shape[1]):
+    #         if edged[i][j] != 0:
+    #             pointlist.append((j,i))
+
+    # Find the leftmost and rightmost points in every row
+    # Compare with the topmost points in every column to determine which points are on the right and left edges
+    left_edgelist, right_edgelist, top_edgelist = [], [], []
+    for i in range(edged.shape[0]):
+        j = edged.shape[1]-1
+        while edged[i][j] == 0 and j > 0:
+            j -= 1
+        if j != 0:
+            right_edgelist.append((i,j))
+        j = 0
+        while edged[i][j] == 0 and j < edged.shape[1]-1:
+            j += 1
+        if j != edged.shape[1]:
+            left_edgelist.append((i,j))
+    for j in range(edged.shape[1]):
+        i = 0
+        while edged[i][j] == 0 and i < edged.shape[0]-1:
+            i += 1
+        if i != 0:
+            top_edgelist.append((i,j))
+    left_edgelist = [x for x in left_edgelist if x in top_edgelist]
+    right_edgelist = [x for x in right_edgelist if x in top_edgelist]
+
+    # Search through the lines to find the ones that best match the left and right edges by summing
+    # the distance from the line to each point on the edges
+    # Additional limits: slopes must be > 0.5 and < 5 and intersect must be within the top 1/3 of the image
+    min_diff_left = 2**20-1
+    min_diff_right = 2**20-1
+    best_left = []
+    best_right = []
+    penalty = 30 # To ensure that outlier points don't affect the line too much, there is a maximum penalty score
+
+    for line in lines:
+        if line[0][2] == line[0][0] or line[0][3] == line[0][1]:
             continue
-        m = (y2 - y1) / (x2 - x1)       # Find the line's slope
-        x1_orig = x1
-        if y1 < y2:
-            x1 = max(x_left, x1 - 500, x1 - int((y1 - y_top) / m))
-            x2 = min(x_right, x2 + 500, x2 + int((y2 + y_bot) / m))
-            y1 = max(y_top, y1 + int((x1 - x1_orig) * m))
-            y2 = y1 + int((x2 - x1) * m)
-            triangle = [[x1, y1], [x2, y2], [x2, y1]]
-        else:
-            x1 = max(x_left, x1 - 500, x1 + int((y_bot - y1) / m))
-            x2 = min(x_right, x2 + 500, x2 - int((y2 + y_top) / m))
-            y1 = min(y_bot, y1 + int((x1 - x1_orig) * m))
-            y2 = y1 + int((x2 - x1) * m)
-            triangle = [[x1, y1], [x2, y2], [x1, y2]]
-        triangles.append(np.array(triangle, np.int32).reshape(-1, 1, 2))
+        m = (line[0][3] - line[0][1]) / (line[0][2] - line[0][0])
+        b = line[0][3] - m*line[0][2]
 
+        # For visualization purposes only
+        # le_mask = np.zeros(mask.shape) * 255
+        # for point in pointlist:
+        #     cv2.line(le_mask,point,point,[0,300,0])
+        # for point in right_edgelist:
+        #     cv2.line(le_mask,point[::-1],point[::-1],[100,0,100]) #purple
+        # for point in left_edgelist:
+        #     cv2.line(le_mask,point[::-1],point[::-1],[0,0,100]) #cyan
+        # cv2.line(le_mask,(0,int(b)),(800, int(m*800+b)),[0,0,100])
+        # if best_left != []:
+        #     cv2.line(le_mask,(0,int(best_left[1])),(800, int(best_left[0]*800+best_left[1])),[100,100,0])
+        # if best_right != []:
+        #     cv2.line(le_mask,(0,int(best_right[1])),(800, int(best_right[0]*800+best_right[1])),[100,0,100])     
+
+        if m < -0.5 and m > -2: # For lines of negative slope
+            diff = 0
+            for point in left_edgelist:
+                diff += min(penalty, abs(point[0] - (m*point[1]+b)))
+                diff += min(penalty, abs(point[1] - (point[0]-b)/m))
+
+                # For visualization only
+                # cv2.line(le_mask,point[::-1],(point[1],int(m*point[1]+b)),[100,0,100])
+                # cv2.line(le_mask,point[::-1],(int((point[0]-b)/m),point[0]),[100,0,100])
+                # cv2.imshow("blah", le_mask)
+                # cv2.waitKey(1)
+
+            if diff < min_diff_left:
+                best_left = [m,b]
+                min_diff_left = diff
+
+        if m > 0.5 and m < 2: # For lines of positive slope
+            diff = 0
+            for point in right_edgelist:
+                diff += min(penalty, abs(point[0] - (m*point[1]+b)))
+                diff += min(penalty, abs(point[1] - (point[0]-b)/m))
+
+                # For visualization only
+                # cv2.line(le_mask,point[::-1],(point[1],int(m*point[1]+b)),[100,0,100])
+                # cv2.line(le_mask,point[::-1],(int((point[0]-b)/m),point[0]),[100,0,100])
+                # cv2.imshow("blah", le_mask)
+                # cv2.waitKey(1)
+
+            if diff < min_diff_right:
+                best_right = [m,b]
+                min_diff_right = diff
+
+    final_lines = [best_left[0], best_left[1], best_right[0], best_right[1]]
+
+    # Draw triangles using the determined lines and the corners of the image onto the mask.
+    triangles = []
     triangle_mask = np.ones(mask.shape, np.uint8) * 255
+    for i in range(2):
+        m , b = final_lines[i*2] , final_lines[i*2+1]
+        x1 = 0 if m < 0 else mask.shape[1]
+        y1 = 0
+        x2 = int((y1 - b) / m)
+        y2 = int(m * x1 + b)
+        triangle = [[x1, y2], [x2, y1], [x1, y1]]
+        triangles.append(np.array(triangle, np.int32))
+   
     cv2.fillPoly(triangle_mask, triangles, [0, 0, 0])  # Create the mask by filling in the triangles with white.
+    lower_edge = find_lower_edge(mask, edged, final_lines) # Run method to find lower edge
+    triangle_mask = cv2.bitwise_and(triangle_mask, lower_edge) # Combine the lower edge mask with the triangles.
+
+    # For visualization purposes    
+    # le_mask = triangle_mask
+    # for point in pointlist:
+    #     cv2.line(le_mask,point,point,[0,100,0])
+    # cv2.imshow("blah", le_mask)
+
     return triangle_mask
 
 
@@ -69,15 +157,94 @@ def filter_beam(orig_img, triangles_mask=True):
     mask = np.zeros(orig_img.shape, np.uint8)
     cv2.fillPoly(mask, [beam_contour], [255,255,255])               # Create the mask by filling in the contour with white.
 
-    # Attempt to filter out triangles in top corners of image (LEAVE OUT FOR NOW)
-    '''
+    # Attempt to filter out triangles in top corners of image
     if triangles_mask:
-        try:
-            triangle_mask = refine_mask(mask)
-            mask = cv2.bitwise_and(mask, triangle_mask)
-        except:
-            pass
-    '''
+        triangle_mask = refine_mask(mask)
+        # mask = cv2.bitwise_and(mask, triangle_mask)
 
-    final_img = cv2.bitwise_and(orig_img, mask)    # Mask everything out but the US beam.
+    final_img = cv2.bitwise_and(orig_img, triangle_mask)    # Mask everything out but the US beam.
     return final_img
+
+def find_lower_edge(mask, edged, lines):
+    '''
+    Detects a circle with x-coordinate of centre given by lines of triangles isolated by refine_mask. 
+    Returns a mask isolating all contents within the circle.
+    :param edged: the edges of the largest contour of the ultrasound beam
+    :param lines: An array containing the slopes and intercepts of the lines.
+    :mask: A mask that filters out anything not bound by the generated circle.
+    '''
+    mi, bi, mj, bj = lines[0:4]
+
+    # For visualization purposes only
+    # pointlist = []
+    # for i in range(edged.shape[0]):
+    #     for j in range(edged.shape[1]):
+    #         if edged[i][j] != 0:
+    #             pointlist.append((j,i))
+
+    # Find the bottom-most positive value in every column
+    edgelist = []
+    for j in range(edged.shape[1]):
+        i = len(edged)-1
+        while edged[i][j] == 0 and i != 0:
+            i -= 1
+        if i != 0:
+            edgelist.append((i,j))
+
+    # Sort the list and take the 400 lowest points
+    edgelist.sort(reverse=True)
+    edgelist = [x[::-1] for x in edgelist]
+
+    # Determine the position and size of the circle calculating circles with points spaced half the list apart
+    # Attempt to minimize distance of the circle to every point in the bottom edge
+    # Variables named after circle formula (x-h)^2 + (y-k)^2 = r^2
+    h = (bj - bi) / (mi - mj)
+    intersect = mi * h + bi
+    k_final = 0
+    max_radius = 0
+    max_difference = 2**20-1
+    for index in range(int(len(edgelist)*0.5)):
+        p1 = edgelist[index]
+        p2 = edgelist[index + int(len(edgelist)*0.5)]
+        x1, x2, y1, y2 = p1[0], p2[0], p1[1], p2[1]
+        k = (((x1 - h)**2 + y1**2) - ((x2 - h)**2 + y2**2)) / (2*(y1-y2))
+        r = abs(((x1-h)**2+(y1-k)**2)**0.5) 
+        difference = 0
+        for point in edgelist:
+            difference += abs(point[1] - ((r**2 - (point[0] - h)**2)**0.5 + k))
+        if difference < max_difference:
+            max_radius = r
+            k_final = k
+            max_difference = difference
+        
+        # For visualization purposes only
+        # le_mask = np.zeros(mask.shape)
+        # cv2.circle(le_mask,(int(h),int(k)),int(r),[100,100,0])
+        # cv2.circle(le_mask,(int(h),int(k_final)),int(max_radius),[100,100,0])
+        # cv2.line(le_mask,(int(h),int(k_final)),(int(h),int(intersect)),[0,0,100])
+        # cv2.line(le_mask,(0,int(bi)),(800,int(mi*800+bi)),[0,0,100])
+        # cv2.line(le_mask,(0,int(bj)),(800,int(mj*800+bj)),[0,0,100])
+        # cv2.line(le_mask,p1,p2,[0,0,100],thickness=2)
+        # for point in pointlist:
+        #     cv2.line(le_mask,point,point,[0,100,0])
+        # for point in edgelist:
+        #     cv2.line(le_mask,point,point,[100,0,100])
+        # cv2.imshow("blah", le_mask)
+        # cv2.waitKey(5)
+          
+    # Make an array of zeroes the size of the image
+    # Fill the circle with ones
+    lower_edge_mask = np.zeros(mask.shape, np.uint8)
+    cv2.circle(lower_edge_mask,(int(h),int(k_final)),int(max_radius),[255,255,255],-1)
+
+    return lower_edge_mask
+
+if __name__ == "__main__":
+    filenames = ['L1-010', 'L1-026', 'L2-010', 'peff', 'R1-011', 'R1-019', 'R2-012', 'us1', 'us2', 'us3']
+    # filenames = ['L1-010']
+    for fname in filenames:
+        orig_img = cv2.imread('C:/Users/Jabb3/Documents/GitHub/covid-us-ml/src/data/us_imgs/'+ fname + '.jpg', 1)
+        cv2.imshow("original", orig_img)
+        frame = filter_beam(orig_img, triangles_mask=True)  # Mask out everything but US beam
+        cv2.imshow("masked", frame)
+        cv2.waitKey(100)
