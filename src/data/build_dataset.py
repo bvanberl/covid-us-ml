@@ -5,7 +5,7 @@ import cv2
 import glob
 from tqdm import tqdm
 from sklearn.model_selection import train_test_split
-from src.data.filter_beam import filter_beam
+from src.data.filter_beam import filter_beam, find_contour_area
 from src.data.preprocess import to_greyscale
 
 def mp4_to_images(mp4_path):
@@ -20,15 +20,38 @@ def mp4_to_images(mp4_path):
     mp4_filename = mp4_filename.split('.')[0]       # Strip file extension
 
     idx = 0
+    max_area = 0
+    max_area_id = 0
     while (True):
         ret, frame = vc.read()
         if not ret:
             break   # End of frames reached
         img_path = vid_dir + '/' + mp4_filename + '_' + str(idx) + '.jpg'
-        frame = filter_beam(frame, triangles_mask=True)  # Mask out everything but US beam
-        grey_frame = to_greyscale(frame)
-        cv2.imwrite(img_path, grey_frame)
+        if find_contour_area(frame) > max_area: # Record which contour has the maximum area
+            max_area = find_contour_area(frame)
+            max_area_id = idx
+        
+        cv2.imwrite(img_path, frame) #save all the images out
         idx += 1
+
+    mask_all_images(vid_dir + '/' + mp4_filename + '_', max_area_id, idx)
+
+def mask_all_images(img_dir, max_area_id, idx):
+    '''
+    Finds the mask of the image with the largest area, and applies that frame 
+    to every frame in the video.
+    :param img_dir: the path to the images
+    :param max_area_id: the id of the frame with the largest contour area
+    :param idx: the number of frames in the video
+    '''
+    frame = cv2.imread(img_dir + str(max_area_id)+'.jpg') 
+    mask = filter_beam(frame, triangles_mask=True) # Calculate the mask using the frame with the largest contour
+    
+    for i in range(idx):
+        frame = cv2.imread(img_dir + str(i) + '.jpg') 
+        frame = cv2.bitwise_and(frame, mask) # Use that mask on every frame in the video
+        grey_frame = to_greyscale(frame)
+        cv2.imwrite(img_dir + str(i) + '.jpg', grey_frame)  # Overwrite every image
 
 def build_encounter_dataframe(cfg):
     '''

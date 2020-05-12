@@ -91,6 +91,28 @@ def refine_mask(mask):
 
     return triangle_mask
 
+def find_contour_area(orig_img):
+    '''
+    Find the area of the largest contour of the image.
+    :param orig_img: A numpy array of the ultrasound image
+    :return: the area of the largest contour of the image.
+    '''
+    img = cv2.cvtColor(orig_img, cv2.COLOR_BGR2GRAY)    # Get grey version of image.
+
+    # Mask out any brightly coloured regions (e.g. manufacturer's logo)
+    grey_mask = (np.logical_and.reduce((abs(orig_img[:,:,0] - orig_img[:,:,1]) < 25, 
+                                        abs(orig_img[:,:,1] - orig_img[:,:,2]) < 25,
+                                        abs(orig_img[:,:,0] - orig_img[:,:,2]) < 25)) * 255).astype(np.uint8)
+    bright_col_area = cv2.bitwise_and(img, cv2.bitwise_not(grey_mask))      # Select candidate brightly coloured regions
+    bright_col_area = cv2.blur(bright_col_area, (4, 4))                     # Slightly blur the brightly coloured regions
+    bright_col_mask = ((bright_col_area < 25) * 255).astype(np.uint8)       # Create a mask for brightly coloured regions
+    img = cv2.bitwise_and(img, bright_col_mask)                             # Mask out brightly coloured regions
+
+    # Mask out and select the largest continuous contour in this image (i.e. the ultrasound beam).
+    ret, thresh = cv2.threshold(img, 1, 255, cv2.THRESH_BINARY)     # Threshold all non-black parts of the image.
+    contours, hierarchy = cv2.findContours(thresh, cv2.RETR_LIST, cv2.CHAIN_APPROX_NONE)    # Find contours in the image.
+    beam_contour = max(contours, key=cv2.contourArea)               # Select the contour with the greatest area (the US beam).
+    return cv2.contourArea(beam_contour)
 
 def filter_beam(orig_img, triangles_mask=True):
     '''
@@ -120,12 +142,12 @@ def filter_beam(orig_img, triangles_mask=True):
     cv2.fillPoly(mask, [beam_contour], [255,255,255])               # Create the mask by filling in the contour with white.
 
     # Attempt to filter out triangles in top corners of image
-    if triangles_mask:
-        triangle_mask = refine_mask(mask)
+    # if triangles_mask:
+    #     triangle_mask = refine_mask(mask)
         # mask = cv2.bitwise_and(mask, triangle_mask) # Combines contour with masks
 
-    final_img = cv2.bitwise_and(orig_img, triangle_mask)    # Mask everything out but the US beam.
-    return final_img
+    # final_img = cv2.bitwise_and(orig_img, triangle_mask)    # Mask everything out but the US beam.
+    return refine_mask(mask)
 
 def find_lower_edge(mask, edged, lines):
     '''
