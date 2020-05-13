@@ -10,8 +10,9 @@ from src.data.preprocess import to_greyscale
 
 def mp4_to_images(mp4_path):
     '''
-    Converts an mp4 video to a series of images and save the images in the same directory. Applies beam filtering
-    algorithm to mask out everything but the US beam in the images.
+    Converts an mp4 video to a series of images and saves the images in the same directory.
+    Calculates the area of the largest contour for every image and relays the image with 
+    the largest area to mask_all_images. 
     :param mp4_path: File name of the mp4 file to convert to series of images.
     '''
 
@@ -38,7 +39,7 @@ def mp4_to_images(mp4_path):
 
 def mask_all_images(img_dir, max_area_id, idx):
     '''
-    Finds the mask of the image with the largest area, and applies that frame 
+    Finds the mask of the image with the largest area, and applies that mask
     to every frame in the video.
     :param img_dir: the path to the images
     :param max_area_id: the id of the frame with the largest contour area

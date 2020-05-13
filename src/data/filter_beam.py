@@ -141,17 +141,11 @@ def filter_beam(orig_img, triangles_mask=True):
     mask = np.zeros(orig_img.shape, np.uint8)
     cv2.fillPoly(mask, [beam_contour], [255,255,255])               # Create the mask by filling in the contour with white.
 
-    # Attempt to filter out triangles in top corners of image
-    # if triangles_mask:
-    #     triangle_mask = refine_mask(mask)
-        # mask = cv2.bitwise_and(mask, triangle_mask) # Combines contour with masks
-
-    # final_img = cv2.bitwise_and(orig_img, triangle_mask)    # Mask everything out but the US beam.
     return refine_mask(mask)
 
 def find_lower_edge(mask, edged, lines):
     '''
-    Detects a circle with x-coordinate of centre given by lines of triangles isolated 
+    Detects a circle with x-coordinate of centre given by lines of triangles isolated
     by refine_mask. Returns a mask isolating all contents within the circle.
     :param edged: the edges of the largest contour of the ultrasound beam
     :param lines: An array containing the slopes and intercepts of the lines.
@@ -174,7 +168,7 @@ def find_lower_edge(mask, edged, lines):
 
     # Determine the position and size of the circle using points spaced half the list apart
     # Attempt to minimize distance of the circle to every point in the bottom edge
-    # Variables named after circle formula (x-h)^2 + (y-k)^2 = r^2
+    # Variables named after standard equations (x-h)^2 + (y-k)^2 = r^2 and y = mx + b
     h = (bj - bi) / (mi - mj)
     intersect = mi * h + bi
     k_final = 0
@@ -195,7 +189,7 @@ def find_lower_edge(mask, edged, lines):
             max_difference = difference
 
     # Make an array of zeroes the size of the image
-    # Fill the circle with ones
+    # Fill the circle with white
     lower_edge_mask = np.zeros(mask.shape, np.uint8)
     cv2.circle(lower_edge_mask, (int(h), int(k_final)), int(max_radius), [255, 255, 255], -1)
 
