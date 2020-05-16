@@ -121,10 +121,10 @@ def filter_beam(orig_img, triangles_mask=True):
 
     # Attempt to filter out triangles in top corners of image
     if triangles_mask:
-        triangle_mask = refine_mask(mask)
+        mask = refine_mask(mask)
         # mask = cv2.bitwise_and(mask, triangle_mask) # Combines contour with masks
 
-    final_img = cv2.bitwise_and(orig_img, triangle_mask)    # Mask everything out but the US beam.
+    final_img = cv2.bitwise_and(orig_img, mask)    # Mask everything out but the US beam.
     return final_img
 
 def find_lower_edge(mask, edged, lines):

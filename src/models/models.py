@@ -1,10 +1,11 @@
 from tensorflow.keras import Model
 from tensorflow.keras.layers import Dense, Conv2D, MaxPool2D, Flatten, Dropout, Input, LeakyReLU, BatchNormalization, \
-                                    Activation, Add, GlobalAveragePooling2D, ZeroPadding2D
+                                    Activation, Add, GlobalAveragePooling2D, ZeroPadding2D, AveragePooling2D
 from tensorflow.keras.regularizers import l2
 from tensorflow.keras.optimizers import Adam
 from tensorflow.keras.initializers import Constant
 from tensorflow.keras.applications.resnet_v2 import ResNet50V2, ResNet101V2
+from tensorflow.keras.applications.vgg16 import VGG16
 
 
 def resnet50v2(model_config, input_shape, metrics, n_classes, output_bias=None):
@@ -33,6 +34,49 @@ def resnet50v2(model_config, input_shape, metrics, n_classes, output_bias=None):
     # Start with pretrained ResNet50V2
     X_input = Input(input_shape, name='input')
     base_model = ResNet50V2(include_top=False, weights='imagenet', input_shape=input_shape, input_tensor=X_input)
+    X = base_model.output
+
+    # Add custom top layers
+    X = GlobalAveragePooling2D()(X)
+    X = Dropout(dropout)(X)
+    X = Dense(nodes_dense0, kernel_initializer='he_uniform', activation='relu', activity_regularizer=l2(l2_lambda))(X)
+    X = Dropout(dropout)(X)
+    X = Dense(nodes_dense1, kernel_initializer='he_uniform', activation='relu', activity_regularizer=l2(l2_lambda))(X)
+    X = Dense(n_classes, bias_initializer=output_bias)(X)
+    Y = Activation('softmax', dtype='float32', name='output')(X)
+
+    # Set model loss function, optimizer, metrics.
+    model = Model(inputs=X_input, outputs=Y)
+    model.summary()
+    model.compile(loss='categorical_crossentropy', optimizer=optimizer, metrics=metrics)
+    return model
+
+def vgg16(model_config, input_shape, metrics, n_classes, output_bias=None):
+    '''
+    Defines a model based on a pretrained ResNet50V2 for multiclass X-ray classification.
+    :param model_config: A dictionary of parameters associated with the model architecture
+    :param input_shape: The shape of the model input
+    :param metrics: Metrics to track model's performance
+    :param n_classes: # of classes in data
+    :param output_bias: bias initializer of output layer
+    :return: a Keras Model object with the architecture defined in this method
+    '''
+
+    # Set hyperparameters
+    nodes_dense0 = model_config['NODES_DENSE0']
+    nodes_dense1 = model_config['NODES_DENSE1']
+    lr = model_config['LR']
+    dropout = model_config['DROPOUT']
+    l2_lambda = model_config['L2_LAMBDA']
+    optimizer = Adam(learning_rate=lr)
+    print("MODEL CONFIG: ", model_config)
+
+    if output_bias is not None:
+        output_bias = Constant(output_bias)     # Set initial output bias
+
+    # Start with pretrained ResNet50V2
+    X_input = Input(input_shape, name='input')
+    base_model = VGG16(include_top=False, weights='imagenet', input_shape=input_shape, input_tensor=X_input)
     X = base_model.output
 
     # Add custom top layers
@@ -161,7 +205,7 @@ def custom_resnet(model_config, input_shape, metrics, n_classes, output_bias=Non
     X = ZeroPadding2D((pad, pad))(X)
 
     # Initialize the model with a convolutional layer
-    X = Conv2D(init_filters, kernel_size, strides=strides, name = 'conv0', kernel_initializer='he_uniform')(X)
+    X = Conv2D(init_filters, (7,7), strides=strides, name = 'conv0', kernel_initializer='he_uniform')(X)
     X = BatchNormalization(axis = 3, name='bn_conv0')(X)
     X = LeakyReLU()(X)
     X = MaxPool2D(max_pool_size, padding='same', name='maxpool0')(X)
@@ -175,10 +219,13 @@ def custom_resnet(model_config, input_shape, metrics, n_classes, output_bias=Non
         X = identity_block(X, kernel_size=kernel_size, filters=[f1, f2, f3], stage=(i+1), block='c')
 
     # Add fully connected layers
-    X = GlobalAveragePooling2D(name='globalavgpool0')(X)
+
+    X = AveragePooling2D(strides, name='avgpool0')(X)
+    X = Flatten()(X)
     X = Dropout(dropout)(X)
     X = Dense(nodes_dense0, kernel_initializer='he_uniform', activity_regularizer=l2(l2_lambda), name='fc0')(X)
     X = LeakyReLU()(X)
+    X = Dropout(dropout)(X)
     X = Dense(n_classes, bias_initializer=output_bias)(X)
     Y = Activation('softmax', dtype='float32', name='output')(X)
 
