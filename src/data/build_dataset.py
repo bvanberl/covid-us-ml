@@ -25,7 +25,7 @@ def mp4_to_images(mp4_path):
         if not ret:
             break   # End of frames reached
         img_path = vid_dir + '/' + mp4_filename + '_' + str(idx) + '.jpg'
-        frame = filter_beam(frame, triangles_mask=True)  # Mask out everything but US beam
+        frame = filter_beam(frame, triangles_mask=False)  # Mask out everything but US beam
         grey_frame = to_greyscale(frame)
         cv2.imwrite(img_path, grey_frame)
         idx += 1
