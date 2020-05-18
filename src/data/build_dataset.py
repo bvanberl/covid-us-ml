@@ -5,30 +5,82 @@ import cv2
 import glob
 from tqdm import tqdm
 from sklearn.model_selection import train_test_split
-from src.data.filter_beam import filter_beam
-from src.data.preprocess import to_greyscale
+# from src.data.filter_beam import filter_beam, find_contour_area
+# from src.data.preprocess import to_greyscale
+from filter_beam import filter_beam, find_contour_area, contour_image
+from preprocess import to_greyscale
 
 def mp4_to_images(mp4_path):
     '''
-    Converts an mp4 video to a series of images and save the images in the same directory. Applies beam filtering
-    algorithm to mask out everything but the US beam in the images.
+    Converts an mp4 video to a series of images and saves the images in the same directory.
+    Calculates the area of the largest contour for every image and relays the image with 
+    the largest area to mask_all_images. 
     :param mp4_path: File name of the mp4 file to convert to series of images.
+    :return: Returns the mask used, else mp4_path and number of frames if failed to find contour.
     '''
-
     vc = cv2.VideoCapture(mp4_path)
     vid_dir, mp4_filename = os.path.split(mp4_path)      # Get folder and filename of mp4 file respectively
     mp4_filename = mp4_filename.split('.')[0]       # Strip file extension
 
     idx = 0
+    max_area = 0
+    max_area_id = 0
     while (True):
         ret, frame = vc.read()
         if not ret:
             break   # End of frames reached
         img_path = vid_dir + '/' + mp4_filename + '_' + str(idx) + '.jpg'
-        frame = filter_beam(frame, triangles_mask=False)  # Mask out everything but US beam
-        grey_frame = to_greyscale(frame)
-        cv2.imwrite(img_path, grey_frame)
+        area = find_contour_area(frame)
+        if area > max_area: # Record which contour has the maximum area
+            max_area = area
+            max_area_id = idx
+        cv2.imwrite(img_path, frame) # Save all the images out
         idx += 1
+
+    mask = mask_all_images(vid_dir + '/' + mp4_filename + '_', max_area_id, idx) # Find and return mask.
+
+    if isinstance(mask, int): # mask_all_images returns 0 if the algorithm failed
+        return (vid_dir + '/' + mp4_filename + '_', idx) # Return a tuple of the video on which the algorithm failed
+    else:
+        return mask # Return the mask.
+
+def mask_all_images(img_dir, max_area_id, idx, temp_mask=0):
+    '''
+    Finds the mask of the image with the largest area, and applies that mask
+    to every frame in the video.
+    :param img_dir: the path to the images
+    :param max_area_id: the id of the frame with the largest contour area
+    :param idx: the number of frames in the video
+    :return: a number indicating whether the process succeeded or failed
+    '''
+    if isinstance(temp_mask, int): # If there is no temp_mask to use
+        frame = cv2.imread(img_dir + str(max_area_id)+'.jpg') 
+        mask = filter_beam(frame) # Calculate the mask using the frame with the largest contour
+    else:
+        mask = temp_mask
+
+    if isinstance(mask, int): # If filter_beam fails, it returns 0
+        return 0
+    else: # Apply the mask onto all images in the video.
+        for i in range(idx):
+            frame = cv2.imread(img_dir + str(i) + '.jpg') 
+            frame = cv2.bitwise_and(frame, mask) # Use that mask on every frame in the video
+            grey_frame = to_greyscale(frame)
+            cv2.imwrite(img_dir + str(i) + '.jpg', grey_frame)  # Overwrite every image
+        return mask
+
+def contour_all_images(mp4_path): 
+    '''
+    For all frames in the video, create a mask to blacken all regions not bound
+    by the largest contour found within the image.
+    :param mp4_path: a tuple containing the path to the frames in index 0, and
+                     the number of frames in index 1
+    '''
+    for i in range(mp4_path[1]): 
+        image = cv2.imread(mp4_path[0] + str(i) + '.jpg')
+        image = contour_image(image) # Find the largest contour in each image and use it as the mask.
+        grey_frame = to_greyscale(image)
+        cv2.imwrite(mp4_path[0] + str(i) + '.jpg', grey_frame)
 
 def build_encounter_dataframe(cfg):
     '''
@@ -94,8 +146,21 @@ def build_file_dataframe(cfg, encounter_df, img_overwrite=False):
         counter += 1
         if (os.path.isdir(row['encounter'])):
             if (not glob.glob(row['encounter'] + '/*.jpg')) or img_overwrite:
+                needs_reprocessing = []
+                temp_mask = 0
                 for mp4_file in glob.glob(row['encounter'] + '/*.mp4'):
-                    mp4_to_images(mp4_file)     # Convert mp4 encounter file to image files
+                    path = mp4_to_images(mp4_file) # Convert mp4 encounter file to image files
+                    if isinstance(path, tuple): # mp4_to_images failed for this path
+                        needs_reprocessing.append(path)
+                    elif isinstance(temp_mask, int):
+                        temp_mask = path # saves the first mask found
+                if isinstance(temp_mask, int): # If images need reprocessing and there is no temp_mask from another image in the same folder
+                    for mp4_file in needs_reprocessing: 
+                        contour_all_images(mp4_file) # Use the largest contour in each image as the mask
+                else:
+                    for mp4_file in needs_reprocessing: # Use the temp_mask from another video to mask any failed videos.
+                        mask_all_images(mp4_file[0], 0, mp4_file[1], temp_mask)     
+
             encounter_filenames = [f.replace(cfg['PATHS']['RAW_DATA'], '').replace("\\","/")
                                    for f in glob.glob(row['encounter'] + "/*.jpg")]
             filenames.extend(encounter_filenames)
