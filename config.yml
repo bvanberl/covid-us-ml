@@ -1,8 +1,8 @@
 PATHS:
-  RAW_DATA: 'D:/Documents/Data/covid-us-ml/raw/'                      # Path to folder containing all raw data
-  COVID_DATA: 'D:/Documents/Data/covid-us-ml/raw/COVID/'        # Path to COVID raw data
-  NCOVID_DATA: 'D:/Documents/Data/covid-us-ml/raw/NCOVID/'      # Path to NCOVID raw data
-  SMOOTH_DATA: 'D:/Documents/Data/covid-us-ml/raw/SMOOTH/'      # Path to SMOOTH raw data
+  RAW_DATA: 'C:/Users/rober/Documents/Data/covid-us-ml/'                # Path to folder containing all raw data
+  COVID_DATA: 'C:/Users/rober/Documents/Data/covid-us-ml/COVID/'        # Path to COVID raw data
+  NCOVID_DATA: 'C:/Users/rober/Documents/Data/covid-us-ml/NCOVID/'      # Path to NCOVID raw data
+  SMOOTH_DATA: 'C:/Users/rober/Documents/Data/covid-us-ml/SMOOTH/'      # Path to SMOOTH raw data
   PROCESSED_DATA: 'data/preprocessed/'
   TRAIN_SET: 'data/preprocessed/train_set.csv'
   VAL_SET: 'data/preprocessed/val_set.csv'
@@ -22,11 +22,13 @@ DATA:
   IMG_DIM: [224, 224]
   VAL_SPLIT: 0.08
   TEST_SPLIT: 0.1
-  CLASSES: ['COVID', 'NCOVID', 'SMOOTH']                   # Classes for binary classification
+  #CLASSES: ['THICK', 'SMOOTH']                   # Classes for binary classification
+  CLASSES: ['COVID', 'NCOVID', 'SMOOTH']          # Classes for multiclass classification
 
 TRAIN:
-  MODEL_DEF: 'custom_resnet'                                # One of {'resnet50v2', 'custom_resnet'}
-  CLASS_MULTIPLIER: [1.0, 1.0, 1.0]                         # Class multiplier for classes
+  MODEL_DEF: 'vgg16'                                # One of {'resnet50v2', 'vgg16', 'custom_resnet'}
+  #CLASS_MULTIPLIER: [1.0, 1.0]                         # Class multiplier for binary classification
+  CLASS_MULTIPLIER: [1.0, 1.0, 1.0]                       # Class multiplier for multiclass classification
   EXPERIMENT_TYPE: 'single_train'                           # One of {'single_train', 'multi_train', 'hparam_search'}
   BATCH_SIZE: 64
   EPOCHS: 300
@@ -38,22 +40,28 @@ NN:
   RESNET50V2:
     NODES_DENSE0: 512
     NODES_DENSE1: 32
-    LR: 0.00001
-    DROPOUT: 0.45
-    L2_LAMBDA: 0.001
+    LR: 0.000003
+    DROPOUT: 0.5
+    L2_LAMBDA: 0.01
+  VGG16:
+    NODES_DENSE0: 512
+    NODES_DENSE1: 32
+    LR: 0.000003
+    DROPOUT: 0.5
+    L2_LAMBDA: 0.01
   CUSTOM_RESNET:
     KERNEL_SIZE: (3,3)
     STRIDES: (2,2)
     INIT_FILTERS: 16
     FILTER_EXP_BASE: 2
     MAXPOOL_SIZE: (2,2)
-    RES_BLOCKS: 5
-    NODES_DENSE0: 256
-    NODES_DENSE1: 64
-    LR: 0.00005
+    RES_BLOCKS: 2
+    NODES_DENSE0: 128
+    NODES_DENSE1: 32
+    LR: 0.00001
     OPTIMIZER: 'adam'
-    DROPOUT: 0.45
-    L2_LAMBDA: 0.00001
+    DROPOUT: 0.5
+    L2_LAMBDA: 0.001
 
 HP_SEARCH:
   METRICS: ['accuracy', 'loss', 'recall', 'precision', 'auc']

@@ -8,6 +8,7 @@ from tensorflow.keras.metrics import BinaryAccuracy, CategoricalAccuracy, Precis
 from tensorflow.keras.models import save_model
 from tensorflow.keras.callbacks import EarlyStopping, TensorBoard, ReduceLROnPlateau
 from tensorflow.keras.preprocessing.image import ImageDataGenerator
+from tensorflow.keras.applications.resnet_v2 import preprocess_input
 from tensorboard.plugins.hparams import api as hp
 from src.models.models import *
 from src.visualization.visualize import *
@@ -38,7 +39,7 @@ def define_callbacks(cfg):
     '''
     early_stopping = EarlyStopping(monitor='val_loss', verbose=1, patience=cfg['TRAIN']['PATIENCE'], mode='min',
                                    restore_best_weights=True)
-    reduce_lr = ReduceLROnPlateau(monitor='val_loss', factor=0.1, patience=cfg['TRAIN']['PATIENCE'] // 2, verbose=1,
+    reduce_lr = ReduceLROnPlateau(monitor='val_loss', factor=0.5, patience=cfg['TRAIN']['PATIENCE'] // 2, verbose=1,
                                   min_lr=1e-8, min_delta=0.0001)
     callbacks = [early_stopping, reduce_lr]
     return callbacks
@@ -55,12 +56,12 @@ def train_model(cfg, data, callbacks, verbose=1):
     '''
 
     # Create ImageDataGenerators. For training data: randomly zoom, stretch, horizontally flip image as data augmentation.
-    train_img_gen = ImageDataGenerator(zoom_range=0.15, horizontal_flip=True, width_shift_range=0.2,
-                                       height_shift_range=0.2, shear_range=5, rotation_range=20,
-                                       brightness_range=[0.8,1.3], samplewise_std_normalization=True,
-                                       samplewise_center=True)
-    val_img_gen = ImageDataGenerator(samplewise_std_normalization=True, samplewise_center=True)
-    test_img_gen = ImageDataGenerator(samplewise_std_normalization=True, samplewise_center=True)
+    train_img_gen = ImageDataGenerator(zoom_range=0.35, horizontal_flip=True, width_shift_range=0.3,
+                                       height_shift_range=0.3, shear_range=35, rotation_range=45,
+                                       samplewise_std_normalization=True,
+                                       samplewise_center=True, preprocessing_function=preprocess_input)
+    val_img_gen = ImageDataGenerator(samplewise_std_normalization=True, samplewise_center=True, preprocessing_function=preprocess_input)
+    test_img_gen = ImageDataGenerator(samplewise_std_normalization=True, samplewise_center=True, preprocessing_function=preprocess_input)
 
     # Create DataFrameIterators
     img_shape = tuple(cfg['DATA']['IMG_DIM'])
@@ -84,7 +85,6 @@ def train_model(cfg, data, callbacks, verbose=1):
     class_multiplier = cfg['TRAIN']['CLASS_MULTIPLIER']
     class_multiplier = [class_multiplier[cfg['DATA']['CLASSES'].index(c)] for c in test_generator.class_indices]
     class_weight = get_class_weights(histogram, class_multiplier)
-
     # Define metrics.
     covid_class_idx = test_generator.class_indices['COVID']   # Get index of COVID-19 class
     thresholds = 1.0 / len(cfg['DATA']['CLASSES'])      # Binary classification threshold for a class
@@ -100,6 +100,8 @@ def train_model(cfg, data, callbacks, verbose=1):
 
     if cfg['TRAIN']['MODEL_DEF'] == 'resnet50v2':
         model_def = resnet50v2
+    elif cfg['TRAIN']['MODEL_DEF'] == 'vgg16':
+        model_def = vgg16
     else:
         model_def = custom_resnet
 
