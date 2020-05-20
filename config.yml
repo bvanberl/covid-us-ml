@@ -26,13 +26,13 @@ DATA:
   CLASSES: ['COVID', 'NCOVID', 'SMOOTH']          # Classes for multiclass classification
 
 TRAIN:
-  MODEL_DEF: 'vgg16'                                # One of {'resnet50v2', 'vgg16', 'custom_resnet'}
+  MODEL_DEF: 'resnet101v2'                                # One of {'resnet50v2', 'resnet101v2', 'vgg16', 'custom_resnet'}
   #CLASS_MULTIPLIER: [1.0, 1.0]                         # Class multiplier for binary classification
   CLASS_MULTIPLIER: [1.0, 1.0, 1.0]                       # Class multiplier for multiclass classification
   EXPERIMENT_TYPE: 'single_train'                           # One of {'single_train', 'multi_train', 'hparam_search'}
-  BATCH_SIZE: 64
+  BATCH_SIZE: 32
   EPOCHS: 300
-  PATIENCE: 7
+  PATIENCE: 5
   METRIC_PREFERENCE: ['auc', 'recall', 'precision', 'loss']
   NUM_RUNS: 10
 
@@ -41,6 +41,12 @@ NN:
     NODES_DENSE0: 512
     NODES_DENSE1: 32
     LR: 0.000003
+    DROPOUT: 0.5
+    L2_LAMBDA: 0.01
+  RESNET101V2:
+    NODES_DENSE0: 1024
+    NODES_DENSE1: 32
+    LR: 0.000001
     DROPOUT: 0.5
     L2_LAMBDA: 0.01
   VGG16:
