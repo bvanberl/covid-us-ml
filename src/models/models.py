@@ -51,6 +51,51 @@ def resnet50v2(model_config, input_shape, metrics, n_classes, output_bias=None):
     model.compile(loss='categorical_crossentropy', optimizer=optimizer, metrics=metrics)
     return model
 
+
+def resnet101v2(model_config, input_shape, metrics, n_classes, output_bias=None):
+    '''
+    Defines a model based on a pretrained ResNet50V2 for multiclass X-ray classification.
+    :param model_config: A dictionary of parameters associated with the model architecture
+    :param input_shape: The shape of the model input
+    :param metrics: Metrics to track model's performance
+    :param n_classes: # of classes in data
+    :param output_bias: bias initializer of output layer
+    :return: a Keras Model object with the architecture defined in this method
+    '''
+
+    # Set hyperparameters
+    nodes_dense0 = model_config['NODES_DENSE0']
+    nodes_dense1 = model_config['NODES_DENSE1']
+    lr = model_config['LR']
+    dropout = model_config['DROPOUT']
+    l2_lambda = model_config['L2_LAMBDA']
+    optimizer = Adam(learning_rate=lr)
+    print("MODEL CONFIG: ", model_config)
+
+    if output_bias is not None:
+        output_bias = Constant(output_bias)     # Set initial output bias
+
+    # Start with pretrained ResNet101V2
+    X_input = Input(input_shape, name='input')
+    base_model = ResNet101V2(include_top=False, weights='imagenet', input_shape=input_shape, input_tensor=X_input)
+    X = base_model.output
+
+    # Add custom top layers
+    X = GlobalAveragePooling2D()(X)
+    X = Dropout(dropout)(X)
+    X = Dense(nodes_dense0, kernel_initializer='he_uniform', activation='relu', activity_regularizer=l2(l2_lambda))(X)
+    X = Dropout(dropout)(X)
+    X = Dense(nodes_dense1, kernel_initializer='he_uniform', activation='relu', activity_regularizer=l2(l2_lambda))(X)
+    X = Dense(n_classes, bias_initializer=output_bias)(X)
+    Y = Activation('softmax', dtype='float32', name='output')(X)
+
+    # Set model loss function, optimizer, metrics.
+    model = Model(inputs=X_input, outputs=Y)
+    model.summary()
+    model.compile(loss='categorical_crossentropy', optimizer=optimizer, metrics=metrics)
+    return model
+
+
 def vgg16(model_config, input_shape, metrics, n_classes, output_bias=None):
     '''
     Defines a model based on a pretrained ResNet50V2 for multiclass X-ray classification.

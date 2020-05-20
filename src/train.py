@@ -39,7 +39,7 @@ def define_callbacks(cfg):
     '''
     early_stopping = EarlyStopping(monitor='val_loss', verbose=1, patience=cfg['TRAIN']['PATIENCE'], mode='min',
                                    restore_best_weights=True)
-    reduce_lr = ReduceLROnPlateau(monitor='val_loss', factor=0.5, patience=cfg['TRAIN']['PATIENCE'] // 2, verbose=1,
+    reduce_lr = ReduceLROnPlateau(monitor='val_loss', factor=0.5, patience=cfg['TRAIN']['PATIENCE'] // 2 + 1, verbose=1,
                                   min_lr=1e-8, min_delta=0.0001)
     callbacks = [early_stopping, reduce_lr]
     return callbacks
@@ -56,12 +56,12 @@ def train_model(cfg, data, callbacks, verbose=1):
     '''
 
     # Create ImageDataGenerators. For training data: randomly zoom, stretch, horizontally flip image as data augmentation.
-    train_img_gen = ImageDataGenerator(zoom_range=0.35, horizontal_flip=True, width_shift_range=0.3,
-                                       height_shift_range=0.3, shear_range=35, rotation_range=45,
+    train_img_gen = ImageDataGenerator(zoom_range=0.3, horizontal_flip=True, width_shift_range=0.3,
+                                       height_shift_range=0.3, shear_range=25, rotation_range=45,
                                        samplewise_std_normalization=True,
-                                       samplewise_center=True, preprocessing_function=preprocess_input)
-    val_img_gen = ImageDataGenerator(samplewise_std_normalization=True, samplewise_center=True, preprocessing_function=preprocess_input)
-    test_img_gen = ImageDataGenerator(samplewise_std_normalization=True, samplewise_center=True, preprocessing_function=preprocess_input)
+                                       samplewise_center=True)
+    val_img_gen = ImageDataGenerator(samplewise_std_normalization=True, samplewise_center=True)
+    test_img_gen = ImageDataGenerator(samplewise_std_normalization=True, samplewise_center=True)
 
     # Create DataFrameIterators
     img_shape = tuple(cfg['DATA']['IMG_DIM'])
@@ -99,6 +99,8 @@ def train_model(cfg, data, callbacks, verbose=1):
     input_shape = cfg['DATA']['IMG_DIM'] + [3]
 
     if cfg['TRAIN']['MODEL_DEF'] == 'resnet50v2':
+        model_def = resnet50v2
+    elif cfg['TRAIN']['MODEL_DEF'] == 'resnet101v2':
         model_def = resnet50v2
     elif cfg['TRAIN']['MODEL_DEF'] == 'vgg16':
         model_def = vgg16
@@ -160,7 +162,7 @@ def multi_train(cfg, data, callbacks, base_log_dir):
             cur_callbacks.append(TensorBoard(log_dir=log_dir, histogram_freq=1))
 
         # Train the model and evaluate performance on test set
-        new_model, test_metrics, test_generator = train_model(cfg, data, cur_callbacks, verbose=1)
+        new_model, test_metrics, test_generator = train_model(cfg, data, cur_callbacks, verbose=2)
 
         # Log test set results and images
         if base_log_dir is not None:
