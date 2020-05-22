@@ -26,7 +26,7 @@ DATA:
   CLASSES: ['COVID', 'NCOVID', 'SMOOTH']          # Classes for multiclass classification
 
 TRAIN:
-  MODEL_DEF: 'resnet101v2'                                # One of {'resnet50v2', 'resnet101v2', 'vgg16', 'custom_resnet'}
+  MODEL_DEF: 'inceptionv3'                                # One of {'resnet50v2', 'resnet101v2', 'vgg16', 'custom_resnet'}
   #CLASS_MULTIPLIER: [1.0, 1.0]                         # Class multiplier for binary classification
   CLASS_MULTIPLIER: [1.0, 1.0, 1.0]                       # Class multiplier for multiclass classification
   EXPERIMENT_TYPE: 'single_train'                           # One of {'single_train', 'multi_train', 'hparam_search'}
@@ -38,17 +38,25 @@ TRAIN:
 
 NN:
   RESNET50V2:
-    NODES_DENSE0: 512
+    NODES_DENSE0: 1024
     NODES_DENSE1: 32
-    LR: 0.000003
+    LR: 0.00001
     DROPOUT: 0.5
     L2_LAMBDA: 0.01
+    OPTIMIZER: 'adam'
   RESNET101V2:
     NODES_DENSE0: 1024
     NODES_DENSE1: 32
     LR: 0.000001
     DROPOUT: 0.5
     L2_LAMBDA: 0.01
+  INCEPTIONV3:
+    NODES_DENSE0: 512
+    NODES_DENSE1: 32
+    LR: 0.000005
+    DROPOUT: 0.5
+    L2_LAMBDA: 0.01
+    OPTIMIZER: 'adam'
   VGG16:
     NODES_DENSE0: 512
     NODES_DENSE1: 32
@@ -58,10 +66,10 @@ NN:
   CUSTOM_RESNET:
     KERNEL_SIZE: (3,3)
     STRIDES: (2,2)
-    INIT_FILTERS: 16
+    INIT_FILTERS: 8
     FILTER_EXP_BASE: 2
     MAXPOOL_SIZE: (2,2)
-    RES_BLOCKS: 2
+    RES_BLOCKS: 1
     NODES_DENSE0: 128
     NODES_DENSE1: 32
     LR: 0.00001
