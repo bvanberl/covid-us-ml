@@ -56,8 +56,8 @@ def train_model(cfg, data, callbacks, verbose=1):
     '''
 
     # Create ImageDataGenerators. For training data: randomly zoom, stretch, horizontally flip image as data augmentation.
-    train_img_gen = ImageDataGenerator(zoom_range=0.3, horizontal_flip=True, width_shift_range=0.3,
-                                       height_shift_range=0.3, shear_range=25, rotation_range=45,
+    train_img_gen = ImageDataGenerator(zoom_range=0.35, horizontal_flip=True, width_shift_range=0.35,
+                                       height_shift_range=0.35, shear_range=30, rotation_range=50,
                                        samplewise_std_normalization=True,
                                        samplewise_center=True)
     val_img_gen = ImageDataGenerator(samplewise_std_normalization=True, samplewise_center=True)
@@ -101,7 +101,9 @@ def train_model(cfg, data, callbacks, verbose=1):
     if cfg['TRAIN']['MODEL_DEF'] == 'resnet50v2':
         model_def = resnet50v2
     elif cfg['TRAIN']['MODEL_DEF'] == 'resnet101v2':
-        model_def = resnet50v2
+        model_def = resnet101v2
+    elif cfg['TRAIN']['MODEL_DEF'] == 'inceptionv3':
+        model_def = inceptionv3
     elif cfg['TRAIN']['MODEL_DEF'] == 'vgg16':
         model_def = vgg16
     else:
@@ -338,7 +340,7 @@ def train_experiment(cfg=None, experiment='single_train', save_weights=True, wri
             if write_logs:
                 tensorboard = TensorBoard(log_dir=log_dir, histogram_freq=1)
                 callbacks.append(tensorboard)
-            model, test_metrics, test_generator = train_model(cfg, data, callbacks)
+            model, test_metrics, test_generator = train_model(cfg, data, callbacks, verbose=2)
             if write_logs:
                 log_test_results(cfg, model, test_generator, test_metrics, log_dir)
         if save_weights:
