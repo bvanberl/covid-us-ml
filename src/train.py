@@ -1,4 +1,5 @@
 import pandas as pd
+import os
 import yaml
 import dill
 import random
@@ -118,12 +119,12 @@ def train_model(cfg, data, callbacks, verbose=1):
 
     # Define model
     model = model_def(cfg['NN'][cfg['TRAIN']['MODEL_DEF'].upper()], input_shape, metrics, n_classes,
-                      output_bias=output_bias)
+                      mixed_precision=cfg['TRAIN']['MIXED_PRECISION'], output_bias=output_bias)
 
     # Train the model.
     steps_per_epoch = ceil(train_generator.n / train_generator.batch_size)
     val_steps = ceil(val_generator.n / val_generator.batch_size)
-    history = model.fit_generator(train_generator, steps_per_epoch=steps_per_epoch, epochs=cfg['TRAIN']['EPOCHS'],
+    history = model.fit(train_generator, steps_per_epoch=steps_per_epoch, epochs=cfg['TRAIN']['EPOCHS'],
                                   validation_data=val_generator, validation_steps=val_steps, callbacks=callbacks,
                                   verbose=verbose, class_weight=class_weight)
 
@@ -312,12 +313,16 @@ def train_experiment(cfg=None, experiment='single_train', save_weights=True, wri
     # Load project config data
     if cfg is None:
         cfg = yaml.full_load(open(os.getcwd() + "/config.yml", 'r'))
+	
+    # Enable mixed precision if desired
+    if cfg['TRAIN']['MIXED_PRECISION']:
+        os.environ['TF_ENABLE_AUTO_MIXED_PRECISION'] = '1'
 
     # Set logs directory
     cur_date = datetime.datetime.now().strftime('%Y%m%d-%H%M%S')
-    log_dir = cfg['PATHS']['LOGS'] + "training\\" + cur_date if write_logs else None
-    if not os.path.exists(cfg['PATHS']['LOGS'] + "training\\"):
-        os.makedirs(cfg['PATHS']['LOGS'] + "training\\")
+    log_dir = cfg['PATHS']['LOGS'] + "training/" + cur_date if write_logs else None
+    if not os.path.exists(cfg['PATHS']['LOGS'] + "training/"):
+        os.makedirs(cfg['PATHS']['LOGS'] + "training/")
 
     # Load dataset file paths and labels
     data = {}
@@ -330,17 +335,17 @@ def train_experiment(cfg=None, experiment='single_train', save_weights=True, wri
 
     # Conduct the desired train experiment
     if experiment == 'hparam_search':
-        log_dir = cfg['PATHS']['LOGS'] + "hparam_search\\" + cur_date
+        log_dir = cfg['PATHS']['LOGS'] + "hparam_search/" + cur_date
         random_hparam_search(cfg, data, callbacks, log_dir)
     else:
         if experiment == 'multi_train':
-            base_log_dir = cfg['PATHS']['LOGS'] + "training\\" if write_logs else None
+            base_log_dir = cfg['PATHS']['LOGS'] + "training/" if write_logs else None
             model, test_metrics, test_generator, cur_date = multi_train(cfg, data, callbacks, base_log_dir)
         else:
             if write_logs:
                 tensorboard = TensorBoard(log_dir=log_dir, histogram_freq=1)
                 callbacks.append(tensorboard)
-            model, test_metrics, test_generator = train_model(cfg, data, callbacks, verbose=2)
+            model, test_metrics, test_generator = train_model(cfg, data, callbacks, verbose=1)
             if write_logs:
                 log_test_results(cfg, model, test_generator, test_metrics, log_dir)
         if save_weights:

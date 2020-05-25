@@ -1,3 +1,4 @@
+import tensorflow as tf
 from tensorflow.keras import Model
 from tensorflow.keras.layers import Dense, Conv2D, MaxPool2D, Flatten, Dropout, Input, LeakyReLU, BatchNormalization, \
                                     Activation, Add, GlobalAveragePooling2D, ZeroPadding2D, AveragePooling2D
@@ -9,7 +10,7 @@ from tensorflow.keras.applications.vgg16 import VGG16
 from tensorflow.keras.applications.inception_v3 import InceptionV3
 
 
-def resnet50v2(model_config, input_shape, metrics, n_classes, output_bias=None):
+def resnet50v2(model_config, input_shape, metrics, n_classes, mixed_precision=False, output_bias=None):
     '''
     Defines a model based on a pretrained ResNet50V2 for multiclass X-ray classification.
     :param model_config: A dictionary of parameters associated with the model architecture
@@ -27,33 +28,39 @@ def resnet50v2(model_config, input_shape, metrics, n_classes, output_bias=None):
     dropout = model_config['DROPOUT']
     l2_lambda = model_config['L2_LAMBDA']
     optimizer = Adam(learning_rate=lr)
+    if mixed_precision:
+        tf.train.experimental.enable_mixed_precision_graph_rewrite(optimizer)
     print("MODEL CONFIG: ", model_config)
 
     if output_bias is not None:
         output_bias = Constant(output_bias)     # Set initial output bias
 
-    # Start with pretrained ResNet50V2
-    X_input = Input(input_shape, name='input')
-    base_model = ResNet50V2(include_top=False, weights='imagenet', input_shape=input_shape, input_tensor=X_input)
-    for layer in base_model.layers:
-        if 'conv5' not in layer.name and 'conv4' not in layer.name:
-            layer.trainable = False
-    X = base_model.output
+    strategy = tf.distribute.MirroredStrategy()
+    with strategy.scope():
+        # Start with pretrained ResNet50V2
+        X_input = Input(input_shape, name='input')
+        base_model = ResNet50V2(include_top=False, weights='imagenet', input_shape=input_shape, input_tensor=X_input)
+        for layer in base_model.layers:
+            if 'conv5' not in layer.name and 'conv4' not in layer.name:
+                layer.trainable = False
+        X = base_model.output
 
-    # Add custom top layers
-    X = GlobalAveragePooling2D()(X)
-    X = Dropout(dropout)(X)
-    X = Dense(nodes_dense0, kernel_initializer='he_uniform', activation='relu', activity_regularizer=l2(l2_lambda))(X)
-    #X = Dropout(dropout)(X)
-    #X = Dense(nodes_dense1, kernel_initializer='he_uniform', activation='relu', activity_regularizer=l2(l2_lambda))(X)
-    X = Dense(n_classes, bias_initializer=output_bias)(X)
-    Y = Activation('softmax', dtype='float32', name='output')(X)
+        # Add custom top layers
+        X = GlobalAveragePooling2D()(X)
+        X = Dropout(dropout)(X)
+        X = Dense(nodes_dense0, kernel_initializer='he_uniform', activity_regularizer=l2(l2_lambda))(X)
+        X = LeakyReLU()(X)
+        X = Dropout(dropout)(X)
+        X = Dense(nodes_dense1, kernel_initializer='he_uniform', activity_regularizer=l2(l2_lambda))(X)
+        X = LeakyReLU()(X)
+        X = Dense(n_classes, bias_initializer=output_bias)(X)
+        Y = Activation('softmax', dtype='float32', name='output')(X)
 
-    # Set model loss function, optimizer, metrics.
-    model = Model(inputs=X_input, outputs=Y)
-    model.summary()
-    model.compile(loss='categorical_crossentropy', optimizer=optimizer, metrics=metrics)
-    return model
+        # Set model loss function, optimizer, metrics.
+        model = Model(inputs=X_input, outputs=Y)
+        model.summary()
+        model.compile(loss='categorical_crossentropy', optimizer=optimizer, metrics=metrics)
+        return model
 
 
 def resnet101v2(model_config, input_shape, metrics, n_classes, output_bias=None):
