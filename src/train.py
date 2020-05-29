@@ -5,11 +5,13 @@ import dill
 import random
 import tensorflow.summary as tf_summary
 from math import ceil
+import tensorflow as tf
 from tensorflow.keras.metrics import BinaryAccuracy, CategoricalAccuracy, Precision, Recall, AUC
 from tensorflow.keras.models import save_model
 from tensorflow.keras.callbacks import EarlyStopping, TensorBoard, ReduceLROnPlateau
 from tensorflow.keras.preprocessing.image import ImageDataGenerator
-from tensorflow.keras.applications.resnet_v2 import preprocess_input
+from tensorflow.keras.applications.resnet_v2 import preprocess_input as resnet_preprocess
+from tensorflow.keras.applications.inception_v3 import preprocess_input as inceptionv3_preprocess
 from tensorboard.plugins.hparams import api as hp
 from src.models.models import *
 from src.visualization.visualize import *
@@ -57,12 +59,11 @@ def train_model(cfg, data, callbacks, verbose=1):
     '''
 
     # Create ImageDataGenerators. For training data: randomly zoom, stretch, horizontally flip image as data augmentation.
-    train_img_gen = ImageDataGenerator(zoom_range=0.35, horizontal_flip=True, width_shift_range=0.35,
-                                       height_shift_range=0.35, shear_range=30, rotation_range=50,
-                                       samplewise_std_normalization=True,
-                                       samplewise_center=True)
-    val_img_gen = ImageDataGenerator(samplewise_std_normalization=True, samplewise_center=True)
-    test_img_gen = ImageDataGenerator(samplewise_std_normalization=True, samplewise_center=True)
+    train_img_gen = ImageDataGenerator(zoom_range=0.15, horizontal_flip=True, width_shift_range=0.15,
+                                       height_shift_range=0.2, shear_range=20, rotation_range=20,
+                                       preprocessing_function=inceptionv3_preprocess)
+    val_img_gen = ImageDataGenerator(preprocessing_function=inceptionv3_preprocess)
+    test_img_gen = ImageDataGenerator(preprocessing_function=inceptionv3_preprocess)
 
     # Create DataFrameIterators
     img_shape = tuple(cfg['DATA']['IMG_DIM'])
@@ -118,8 +119,13 @@ def train_model(cfg, data, callbacks, verbose=1):
 
 
     # Define model
-    model = model_def(cfg['NN'][cfg['TRAIN']['MODEL_DEF'].upper()], input_shape, metrics, n_classes,
-                      mixed_precision=cfg['TRAIN']['MIXED_PRECISION'], output_bias=output_bias)
+    strategy = tf.distribute.MirroredStrategy()
+    print("Number of devices: {}".format(strategy.num_replicas_in_sync))
+
+    # Open a strategy scope.
+    with strategy.scope():
+        model = model_def(cfg['NN'][cfg['TRAIN']['MODEL_DEF'].upper()], input_shape, metrics, n_classes,
+                          mixed_precision=cfg['TRAIN']['MIXED_PRECISION'], output_bias=output_bias)
 
     # Train the model.
     steps_per_epoch = ceil(train_generator.n / train_generator.batch_size)

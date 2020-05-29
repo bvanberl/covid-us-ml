@@ -35,32 +35,30 @@ def resnet50v2(model_config, input_shape, metrics, n_classes, mixed_precision=Fa
     if output_bias is not None:
         output_bias = Constant(output_bias)     # Set initial output bias
 
-    strategy = tf.distribute.MirroredStrategy()
-    with strategy.scope():
-        # Start with pretrained ResNet50V2
-        X_input = Input(input_shape, name='input')
-        base_model = ResNet50V2(include_top=False, weights='imagenet', input_shape=input_shape, input_tensor=X_input)
-        for layer in base_model.layers:
-            if 'conv5' not in layer.name and 'conv4' not in layer.name:
-                layer.trainable = False
-        X = base_model.output
+    # Start with pretrained ResNet50V2
+    X_input = Input(input_shape, name='input')
+    base_model = ResNet50V2(include_top=False, weights='imagenet', input_shape=input_shape, input_tensor=X_input)
+    for layer in base_model.layers:
+        if 'conv5' not in layer.name and 'conv4' not in layer.name:
+            layer.trainable = False
+    X = base_model.output
 
-        # Add custom top layers
-        X = GlobalAveragePooling2D()(X)
-        X = Dropout(dropout)(X)
-        X = Dense(nodes_dense0, kernel_initializer='he_uniform', activity_regularizer=l2(l2_lambda))(X)
-        X = LeakyReLU()(X)
-        X = Dropout(dropout)(X)
-        X = Dense(nodes_dense1, kernel_initializer='he_uniform', activity_regularizer=l2(l2_lambda))(X)
-        X = LeakyReLU()(X)
-        X = Dense(n_classes, bias_initializer=output_bias)(X)
-        Y = Activation('softmax', dtype='float32', name='output')(X)
+    # Add custom top layers
+    X = GlobalAveragePooling2D()(X)
+    X = Dropout(dropout)(X)
+    X = Dense(nodes_dense0, kernel_initializer='he_uniform', activity_regularizer=l2(l2_lambda))(X)
+    X = LeakyReLU()(X)
+    X = Dropout(dropout)(X)
+    X = Dense(nodes_dense1, kernel_initializer='he_uniform', activity_regularizer=l2(l2_lambda))(X)
+    X = LeakyReLU()(X)
+    X = Dense(n_classes, bias_initializer=output_bias)(X)
+    Y = Activation('softmax', dtype='float32', name='output')(X)
 
-        # Set model loss function, optimizer, metrics.
-        model = Model(inputs=X_input, outputs=Y)
-        model.summary()
-        model.compile(loss='categorical_crossentropy', optimizer=optimizer, metrics=metrics)
-        return model
+    # Set model loss function, optimizer, metrics.
+    model = Model(inputs=X_input, outputs=Y)
+    model.summary()
+    model.compile(loss='categorical_crossentropy', optimizer=optimizer, metrics=metrics)
+    return model
 
 
 def resnet101v2(model_config, input_shape, metrics, n_classes, output_bias=None):
@@ -107,7 +105,7 @@ def resnet101v2(model_config, input_shape, metrics, n_classes, output_bias=None)
     return model
 
 
-def inceptionv3(model_config, input_shape, metrics, n_classes, output_bias=None):
+def inceptionv3(model_config, input_shape, metrics, n_classes, mixed_precision=False, output_bias=None):
     '''
     Defines a model based on a pretrained InceptionV3 for multiclass US classification.
     :param model_config: A dictionary of parameters associated with the model architecture
@@ -129,6 +127,8 @@ def inceptionv3(model_config, input_shape, metrics, n_classes, output_bias=None)
     else:
         optimizer = Adam(learning_rate=lr)
     print("MODEL CONFIG: ", model_config)
+    if mixed_precision:
+        tf.train.experimental.enable_mixed_precision_graph_rewrite(optimizer)
 
     if output_bias is not None:
         output_bias = Constant(output_bias)     # Set initial output bias
@@ -139,15 +139,18 @@ def inceptionv3(model_config, input_shape, metrics, n_classes, output_bias=None)
     for layer in base_model.layers[:249]:
         layer.trainable = False
     for layer in base_model.layers[249:]:
-        layer.trainable = True
+        layer.trainable = False
     X = base_model.output
 
     # Add custom top layers
     X = GlobalAveragePooling2D()(X)
     X = Dropout(dropout)(X)
-    X = Dense(nodes_dense0, kernel_initializer='he_uniform', activation='relu', activity_regularizer=l2(l2_lambda))(X)
+    X = Dense(nodes_dense0, activity_regularizer=l2(l2_lambda))(X)
+    X = LeakyReLU()(X)
+    X = BatchNormalization()(X)
     X = Dropout(dropout)(X)
-    X = Dense(nodes_dense1, kernel_initializer='he_uniform', activation='relu', activity_regularizer=l2(l2_lambda))(X)
+    X = Dense(nodes_dense1, activity_regularizer=l2(l2_lambda))(X)
+    X = LeakyReLU()(X)
     X = Dense(n_classes, bias_initializer=output_bias)(X)
     Y = Activation('softmax', dtype='float32', name='output')(X)
 
