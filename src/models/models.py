@@ -4,9 +4,11 @@ from tensorflow.keras.layers import Dense, Conv2D, MaxPool2D, Flatten, Dropout, 
 from tensorflow.keras.regularizers import l2
 from tensorflow.keras.optimizers import Adam, SGD
 from tensorflow.keras.initializers import Constant
-from tensorflow.keras.applications.resnet_v2 import ResNet50V2, ResNet101V2
+#from tensorflow.keras.applications.resnet_v2 import ResNet50V2, ResNet101V2
 from tensorflow.keras.applications.vgg16 import VGG16
 from tensorflow.keras.applications.inception_v3 import InceptionV3
+import yaml
+import os
 
 
 def resnet50v2(model_config, input_shape, metrics, n_classes, output_bias=None):
@@ -169,6 +171,8 @@ def vgg16(model_config, input_shape, metrics, n_classes, output_bias=None):
     dropout = model_config['DROPOUT']
     l2_lambda = model_config['L2_LAMBDA']
     optimizer = Adam(learning_rate=lr)
+    frozen_blocks = model_config['FROZEN_BLOCKS']
+    
     print("MODEL CONFIG: ", model_config)
 
     if output_bias is not None:
@@ -177,6 +181,14 @@ def vgg16(model_config, input_shape, metrics, n_classes, output_bias=None):
     # Start with pretrained ResNet50V2
     X_input = Input(input_shape, name='input')
     base_model = VGG16(include_top=False, weights='imagenet', input_shape=input_shape, input_tensor=X_input)
+    
+    # Freeze desired convolutional blocks set in config.yml
+    for layers in range(len(frozen_blocks)):
+        block2freeze = model_config['BLOCK_LAYERS'][frozen_blocks[layers]-1]
+        print(block2freeze)
+        for layer in base_model.layers[block2freeze[0]:block2freeze[1]]:
+            layer.trainable = False
+
     X = base_model.output
 
     # Add custom top layers
@@ -334,3 +346,14 @@ def custom_resnet(model_config, input_shape, metrics, n_classes, output_bias=Non
     model.summary()
     model.compile(loss='categorical_crossentropy', optimizer=optimizer, metrics=metrics)
     return model
+
+'''
+For figuring out VGG16 architecture & how to manipulate freezing desired blocks
+
+cfg = yaml.full_load(open(os.getcwd() + "/config.yml", 'r'))
+model_config = cfg['NN']['VGG16']
+input_shape= cfg['DATA']['IMG_DIM']
+metrics = cfg['TRAIN']['METRIC_PREFERENCE']
+
+vgg16(model_config = model_config, input_shape = [244,244,3], metrics = metrics, n_classes = 3, output_bias=None)
+'''

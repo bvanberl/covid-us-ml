@@ -26,7 +26,7 @@ DATA:
   CLASSES: ['COVID', 'NCOVID', 'SMOOTH']          # Classes for multiclass classification
 
 TRAIN:
-  MODEL_DEF: 'inceptionv3'                                # One of {'resnet50v2', 'resnet101v2', 'vgg16', 'custom_resnet'}
+  MODEL_DEF: 'vgg16'                                # One of {'resnet50v2', 'resnet101v2', 'vgg16', 'custom_resnet'}
   #CLASS_MULTIPLIER: [1.0, 1.0]                         # Class multiplier for binary classification
   CLASS_MULTIPLIER: [1.0, 1.0, 1.0]                       # Class multiplier for multiclass classification
   EXPERIMENT_TYPE: 'single_train'                           # One of {'single_train', 'multi_train', 'hparam_search'}
@@ -63,6 +63,8 @@ NN:
     LR: 0.000003
     DROPOUT: 0.5
     L2_LAMBDA: 0.01
+    BLOCK_LAYERS: [[1,3], [4,6], [7,10], [11,14], [15,18]]   #indices in model.layer() corresponding to conv blocks
+    FROZEN_BLOCKS: [1,2,5]                                   #which blocks to freeze, list of combinations {1, 2, 3, 4, 5}
   CUSTOM_RESNET:
     KERNEL_SIZE: (3,3)
     STRIDES: (2,2)
