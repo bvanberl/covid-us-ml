@@ -63,8 +63,7 @@ NN:
     LR: 0.000003
     DROPOUT: 0.5
     L2_LAMBDA: 0.01
-    BLOCK_LAYERS: [[1,3], [4,6], [7,10], [11,14], [15,18]]   #indices in model.layer() corresponding to conv blocks
-    FROZEN_BLOCKS: [1,2,5]                                   #which blocks to freeze, list of combinations {1, 2, 3, 4, 5}
+    FROZEN_LAYERS: [1,2,3]                   #layers in base model to freeze, corresponding to indices in model.layer(), {1 - 18}
   CUSTOM_RESNET:
     KERNEL_SIZE: (3,3)
     STRIDES: (2,2)

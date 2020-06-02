@@ -171,7 +171,7 @@ def vgg16(model_config, input_shape, metrics, n_classes, output_bias=None):
     dropout = model_config['DROPOUT']
     l2_lambda = model_config['L2_LAMBDA']
     optimizer = Adam(learning_rate=lr)
-    frozen_blocks = model_config['FROZEN_BLOCKS']
+    frozen_layers = model_config['FROZEN_LAYERS']
     
     print("MODEL CONFIG: ", model_config)
 
@@ -183,11 +183,10 @@ def vgg16(model_config, input_shape, metrics, n_classes, output_bias=None):
     base_model = VGG16(include_top=False, weights='imagenet', input_shape=input_shape, input_tensor=X_input)
     
     # Freeze desired convolutional blocks set in config.yml
-    for layers in range(len(frozen_blocks)):
-        block2freeze = model_config['BLOCK_LAYERS'][frozen_blocks[layers]-1]
-        print(block2freeze)
-        for layer in base_model.layers[block2freeze[0]:block2freeze[1]]:
-            layer.trainable = False
+    for layers in range(len(frozen_layers)):
+        layer2freeze = frozen_layers[layers]
+        print('Freezing layer: ' + str(layer2freeze))
+        base_model.layers[layer2freeze].trainable = False
 
     X = base_model.output
 
