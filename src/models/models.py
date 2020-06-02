@@ -136,21 +136,24 @@ def inceptionv3(model_config, input_shape, metrics, n_classes, mixed_precision=F
     # Start with pretrained InceptionV3
     X_input = Input(input_shape, name='input')
     base_model = InceptionV3(include_top=False, weights='imagenet', input_shape=input_shape, input_tensor=X_input)
-    for layer in base_model.layers[:249]:
+    for layer in base_model.layers[:290]:
         layer.trainable = False
-    for layer in base_model.layers[249:]:
-        layer.trainable = False
+    for layer in base_model.layers[290:]:
+        layer.trainable = True
+        if 'conv' in layer.name:
+            setattr(layer, 'activity_regularizer', l2(l2_lambda))
     X = base_model.output
 
     # Add custom top layers
     X = GlobalAveragePooling2D()(X)
     X = Dropout(dropout)(X)
-    X = Dense(nodes_dense0, activity_regularizer=l2(l2_lambda))(X)
-    X = LeakyReLU()(X)
+    X = Dense(nodes_dense0, activation='relu', activity_regularizer=l2(l2_lambda))(X)
+    #X = LeakyReLU()(X)
     X = BatchNormalization()(X)
+    #X = Dropout(dropout)(X)
+    #X = Dense(nodes_dense1, activity_regularizer=l2(l2_lambda))(X)
+    #X = LeakyReLU()(X)
     X = Dropout(dropout)(X)
-    X = Dense(nodes_dense1, activity_regularizer=l2(l2_lambda))(X)
-    X = LeakyReLU()(X)
     X = Dense(n_classes, bias_initializer=output_bias)(X)
     Y = Activation('softmax', dtype='float32', name='output')(X)
 

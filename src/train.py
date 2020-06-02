@@ -59,8 +59,8 @@ def train_model(cfg, data, callbacks, verbose=1):
     '''
 
     # Create ImageDataGenerators. For training data: randomly zoom, stretch, horizontally flip image as data augmentation.
-    train_img_gen = ImageDataGenerator(zoom_range=0.15, horizontal_flip=True, width_shift_range=0.15,
-                                       height_shift_range=0.2, shear_range=20, rotation_range=20,
+    train_img_gen = ImageDataGenerator(zoom_range=0.10, horizontal_flip=True, vertical_flip=True, width_shift_range=0.2,
+                                       height_shift_range=0.2, shear_range=20, rotation_range=50,
                                        preprocessing_function=inceptionv3_preprocess)
     val_img_gen = ImageDataGenerator(preprocessing_function=inceptionv3_preprocess)
     test_img_gen = ImageDataGenerator(preprocessing_function=inceptionv3_preprocess)
@@ -125,7 +125,7 @@ def train_model(cfg, data, callbacks, verbose=1):
     # Open a strategy scope.
     with strategy.scope():
         model = model_def(cfg['NN'][cfg['TRAIN']['MODEL_DEF'].upper()], input_shape, metrics, n_classes,
-                          mixed_precision=cfg['TRAIN']['MIXED_PRECISION'], output_bias=output_bias)
+                          mixed_precision=cfg['TRAIN']['MIXED_PRECISION'], output_bias=None)
 
     # Train the model.
     steps_per_epoch = ceil(train_generator.n / train_generator.batch_size)
@@ -135,7 +135,7 @@ def train_model(cfg, data, callbacks, verbose=1):
                                   verbose=verbose, class_weight=class_weight)
 
     # Run the model on the test set and print the resulting performance metrics.
-    test_results = model.evaluate_generator(test_generator, verbose=1)
+    test_results = model.evaluate(test_generator, verbose=1)
     test_metrics = {}
     test_summary_str = [['**Metric**', '**Value**']]
     for metric, value in zip(model.metrics_names, test_results):
@@ -275,7 +275,7 @@ def log_test_results(cfg, model, test_generator, test_metrics, log_dir):
     '''
 
     # Visualization of test results
-    test_predictions = model.predict_generator(test_generator, verbose=0)
+    test_predictions = model.predict(test_generator, verbose=0)
     test_labels = test_generator.labels
     plt = plot_roc(test_labels, test_predictions, list(test_generator.class_indices.keys()), dir_path=cfg['PATHS']['IMAGES'])
     roc_img = plot_to_tensor()
