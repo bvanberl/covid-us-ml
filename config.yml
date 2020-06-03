@@ -19,18 +19,18 @@ PATHS:
   BATCH_PREDS: 'results/predictions/'
 
 DATA:
-  IMG_DIM: [512, 512]
+  IMG_DIM: [224, 224]
   VAL_SPLIT: 0.08
   TEST_SPLIT: 0.1
   #CLASSES: ['THICK', 'SMOOTH']                   # Classes for binary classification
   CLASSES: ['COVID', 'NCOVID', 'SMOOTH']          # Classes for multiclass classification
 
 TRAIN:
-  MODEL_DEF: 'inceptionv3'                                # One of {'resnet50v2', 'resnet101v2', 'inceptionv3', 'vgg16', 'custom_resnet'}
+  MODEL_DEF: 'custom_ffcnn'                                # One of {'resnet50v2', 'resnet101v2', 'inceptionv3', 'vgg16', 'mobilenetv2', 'custom_resnet', 'custom_ffcnn'}
   #CLASS_MULTIPLIER: [1.0, 1.0]                         # Class multiplier for binary classification
-  CLASS_MULTIPLIER: [2.0, 2.0, 1.0]                       # Class multiplier for multiclass classification
+  CLASS_MULTIPLIER: [1.5, 1.5, 1.0]                       # Class multiplier for multiclass classification
   EXPERIMENT_TYPE: 'single_train'                           # One of {'single_train', 'multi_train', 'hparam_search'}
-  BATCH_SIZE: 320
+  BATCH_SIZE: 480
   EPOCHS: 300
   PATIENCE: 5
   METRIC_PREFERENCE: ['auc', 'recall', 'precision', 'loss']
@@ -65,6 +65,13 @@ NN:
     LR: 0.000003
     DROPOUT: 0.5
     L2_LAMBDA: 0.01
+  MOBILENETV2:
+    NODES_DENSE0: 32
+    NODES_DENSE1: 16
+    LR: 0.0001
+    DROPOUT: 0.5
+    L2_LAMBDA: 0.001
+    OPTIMIZER: 'adam'
   CUSTOM_RESNET:
     KERNEL_SIZE: (3,3)
     STRIDES: (2,2)
@@ -78,6 +85,19 @@ NN:
     OPTIMIZER: 'adam'
     DROPOUT: 0.5
     L2_LAMBDA: 0.001
+  CUSTOM_FFCNN:
+    KERNEL_SIZE: (3,3)
+    STRIDES: (2,2)
+    INIT_FILTERS: 32
+    FILTER_EXP_BASE: 2
+    MAXPOOL_SIZE: (2,2)
+    BLOCKS: 5
+    NODES_DENSE0: 64
+    NODES_DENSE1: 16
+    LR: 0.001
+    OPTIMIZER: 'adam'
+    DROPOUT: 0.5
+    L2_LAMBDA: 0.00001
 
 HP_SEARCH:
   METRICS: ['accuracy', 'loss', 'recall', 'precision', 'auc']

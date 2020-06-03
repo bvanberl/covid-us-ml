@@ -12,6 +12,7 @@ from tensorflow.keras.callbacks import EarlyStopping, TensorBoard, ReduceLROnPla
 from tensorflow.keras.preprocessing.image import ImageDataGenerator
 from tensorflow.keras.applications.resnet_v2 import preprocess_input as resnet_preprocess
 from tensorflow.keras.applications.inception_v3 import preprocess_input as inceptionv3_preprocess
+from tensorflow.keras.applications.mobilenet_v2 import preprocess_input as mobilenetv2_preprocess
 from tensorboard.plugins.hparams import api as hp
 from src.models.models import *
 from src.visualization.visualize import *
@@ -57,13 +58,39 @@ def train_model(cfg, data, callbacks, verbose=1):
     :param verbose: Verbosity mode to pass to model.fit_generator()
     :return: Trained model and associated performance metrics on the test set
     '''
+    
+    if cfg['TRAIN']['MODEL_DEF'] == 'resnet50v2':
+        model_def = resnet50v2
+        preprocessing_function = resnet_preprocess
+    elif cfg['TRAIN']['MODEL_DEF'] == 'resnet101v2':
+        model_def = resnet101v2
+        preprocessing_function = resnet_preprocess
+    elif cfg['TRAIN']['MODEL_DEF'] == 'inceptionv3':
+        model_def = inceptionv3
+        preprocessing_function = inceptionv3_preprocess
+    elif cfg['TRAIN']['MODEL_DEF'] == 'vgg16':
+        model_def = vgg16
+        preprocessing_function = vgg16_preprocess
+    elif cfg['TRAIN']['MODEL_DEF'] == 'mobilenetv2':
+        model_def = mobilenetv2
+    elif cfg['TRAIN']['MODEL_DEF'] == 'custom_resnet':
+        model_def = custom_resnet
+    else:
+        model_def = custom_ffcnn
 
     # Create ImageDataGenerators. For training data: randomly zoom, stretch, horizontally flip image as data augmentation.
-    train_img_gen = ImageDataGenerator(zoom_range=0.10, horizontal_flip=True, vertical_flip=True, width_shift_range=0.2,
-                                       height_shift_range=0.2, shear_range=20, rotation_range=50,
-                                       preprocessing_function=inceptionv3_preprocess)
-    val_img_gen = ImageDataGenerator(preprocessing_function=inceptionv3_preprocess)
-    test_img_gen = ImageDataGenerator(preprocessing_function=inceptionv3_preprocess)
+    if cfg['TRAIN']['MODEL_DEF'] in ['custom_resnet', 'custom_ffcnn']:
+        train_img_gen = ImageDataGenerator(zoom_range=0.10, horizontal_flip=True, vertical_flip=True, width_shift_range=0.2,
+                                           height_shift_range=0.2, shear_range=20, rotation_range=50,
+                                           samplewise_center=True, samplewise_std_normalization=True)
+        val_img_gen = ImageDataGenerator(samplewise_center=True, samplewise_std_normalization=True)
+        test_img_gen = ImageDataGenerator(samplewise_center=True, samplewise_std_normalization=True)
+    else:
+        train_img_gen = ImageDataGenerator(zoom_range=0.10, horizontal_flip=True, vertical_flip=True, width_shift_range=0.2,
+                                           height_shift_range=0.2, shear_range=20, rotation_range=50,
+                                           preprocessing_function=preprocessing_function)
+        val_img_gen = ImageDataGenerator(preprocessing_function=preprocessing_function)
+        test_img_gen = ImageDataGenerator(preprocessing_function=preprocessing_function)
 
     # Create DataFrameIterators
     img_shape = tuple(cfg['DATA']['IMG_DIM'])
@@ -99,17 +126,6 @@ def train_model(cfg, data, callbacks, verbose=1):
     print('Training distribution: ', ['Class ' + list(test_generator.class_indices.keys())[i] + ': ' + str(histogram[i]) + '. '
            for i in range(len(histogram))])
     input_shape = cfg['DATA']['IMG_DIM'] + [3]
-
-    if cfg['TRAIN']['MODEL_DEF'] == 'resnet50v2':
-        model_def = resnet50v2
-    elif cfg['TRAIN']['MODEL_DEF'] == 'resnet101v2':
-        model_def = resnet101v2
-    elif cfg['TRAIN']['MODEL_DEF'] == 'inceptionv3':
-        model_def = inceptionv3
-    elif cfg['TRAIN']['MODEL_DEF'] == 'vgg16':
-        model_def = vgg16
-    else:
-        model_def = custom_resnet
 
     n_classes = len(cfg['DATA']['CLASSES'])
 
@@ -319,7 +335,7 @@ def train_experiment(cfg=None, experiment='single_train', save_weights=True, wri
     # Load project config data
     if cfg is None:
         cfg = yaml.full_load(open(os.getcwd() + "/config.yml", 'r'))
-	
+    
     # Enable mixed precision if desired
     if cfg['TRAIN']['MIXED_PRECISION']:
         os.environ['TF_ENABLE_AUTO_MIXED_PRECISION'] = '1'
