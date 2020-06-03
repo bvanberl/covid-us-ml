@@ -1,3 +1,4 @@
+import tensorflow as tf
 from tensorflow.keras import Model
 from tensorflow.keras.layers import Dense, Conv2D, MaxPool2D, Flatten, Dropout, Input, LeakyReLU, BatchNormalization, \
                                     Activation, Add, GlobalAveragePooling2D, ZeroPadding2D, AveragePooling2D
@@ -7,15 +8,17 @@ from tensorflow.keras.initializers import Constant
 from tensorflow.keras.applications.resnet_v2 import ResNet50V2, ResNet101V2
 from tensorflow.keras.applications.vgg16 import VGG16
 from tensorflow.keras.applications.inception_v3 import InceptionV3
+from tensorflow.keras.applications.mobilenet_v2 import MobileNetV2
 
 
-def resnet50v2(model_config, input_shape, metrics, n_classes, output_bias=None):
+def resnet50v2(model_config, input_shape, metrics, n_classes, mixed_precision=False, output_bias=None):
     '''
     Defines a model based on a pretrained ResNet50V2 for multiclass X-ray classification.
     :param model_config: A dictionary of parameters associated with the model architecture
     :param input_shape: The shape of the model input
     :param metrics: Metrics to track model's performance
     :param n_classes: # of classes in data
+    :param mixed_precision: Whether to use mixed precision (use if you have GPU with compute capacity >= 7.0)
     :param output_bias: bias initializer of output layer
     :return: a Keras Model object with the architecture defined in this method
     '''
@@ -27,6 +30,8 @@ def resnet50v2(model_config, input_shape, metrics, n_classes, output_bias=None):
     dropout = model_config['DROPOUT']
     l2_lambda = model_config['L2_LAMBDA']
     optimizer = Adam(learning_rate=lr)
+    if mixed_precision:
+        tf.train.experimental.enable_mixed_precision_graph_rewrite(optimizer)
     print("MODEL CONFIG: ", model_config)
 
     if output_bias is not None:
@@ -43,9 +48,11 @@ def resnet50v2(model_config, input_shape, metrics, n_classes, output_bias=None):
     # Add custom top layers
     X = GlobalAveragePooling2D()(X)
     X = Dropout(dropout)(X)
-    X = Dense(nodes_dense0, kernel_initializer='he_uniform', activation='relu', activity_regularizer=l2(l2_lambda))(X)
-    #X = Dropout(dropout)(X)
-    #X = Dense(nodes_dense1, kernel_initializer='he_uniform', activation='relu', activity_regularizer=l2(l2_lambda))(X)
+    X = Dense(nodes_dense0, kernel_initializer='he_uniform', activity_regularizer=l2(l2_lambda))(X)
+    X = LeakyReLU()(X)
+    X = Dropout(dropout)(X)
+    X = Dense(nodes_dense1, kernel_initializer='he_uniform', activity_regularizer=l2(l2_lambda))(X)
+    X = LeakyReLU()(X)
     X = Dense(n_classes, bias_initializer=output_bias)(X)
     Y = Activation('softmax', dtype='float32', name='output')(X)
 
@@ -56,13 +63,14 @@ def resnet50v2(model_config, input_shape, metrics, n_classes, output_bias=None):
     return model
 
 
-def resnet101v2(model_config, input_shape, metrics, n_classes, output_bias=None):
+def resnet101v2(model_config, input_shape, metrics, n_classes, mixed_precision=False, output_bias=None):
     '''
     Defines a model based on a pretrained ResNet50V2 for multiclass X-ray classification.
     :param model_config: A dictionary of parameters associated with the model architecture
     :param input_shape: The shape of the model input
     :param metrics: Metrics to track model's performance
     :param n_classes: # of classes in data
+    :param mixed_precision: Whether to use mixed precision (use if you have GPU with compute capacity >= 7.0)
     :param output_bias: bias initializer of output layer
     :return: a Keras Model object with the architecture defined in this method
     '''
@@ -75,7 +83,9 @@ def resnet101v2(model_config, input_shape, metrics, n_classes, output_bias=None)
     l2_lambda = model_config['L2_LAMBDA']
     optimizer = Adam(learning_rate=lr)
     print("MODEL CONFIG: ", model_config)
-
+    if mixed_precision:
+        tf.train.experimental.enable_mixed_precision_graph_rewrite(optimizer)
+        
     if output_bias is not None:
         output_bias = Constant(output_bias)     # Set initial output bias
 
@@ -100,13 +110,14 @@ def resnet101v2(model_config, input_shape, metrics, n_classes, output_bias=None)
     return model
 
 
-def inceptionv3(model_config, input_shape, metrics, n_classes, output_bias=None):
+def inceptionv3(model_config, input_shape, metrics, n_classes, mixed_precision=False, output_bias=None):
     '''
     Defines a model based on a pretrained InceptionV3 for multiclass US classification.
     :param model_config: A dictionary of parameters associated with the model architecture
     :param input_shape: The shape of the model input
     :param metrics: Metrics to track model's performance
     :param n_classes: # of classes in data
+    :param mixed_precision: Whether to use mixed precision (use if you have GPU with compute capacity >= 7.0)
     :param output_bias: bias initializer of output layer
     :return: a Keras Model object with the architecture defined in this method
     '''
@@ -122,6 +133,8 @@ def inceptionv3(model_config, input_shape, metrics, n_classes, output_bias=None)
     else:
         optimizer = Adam(learning_rate=lr)
     print("MODEL CONFIG: ", model_config)
+    if mixed_precision:
+        tf.train.experimental.enable_mixed_precision_graph_rewrite(optimizer)
 
     if output_bias is not None:
         output_bias = Constant(output_bias)     # Set initial output bias
@@ -129,18 +142,24 @@ def inceptionv3(model_config, input_shape, metrics, n_classes, output_bias=None)
     # Start with pretrained InceptionV3
     X_input = Input(input_shape, name='input')
     base_model = InceptionV3(include_top=False, weights='imagenet', input_shape=input_shape, input_tensor=X_input)
-    for layer in base_model.layers[:249]:
+    for layer in base_model.layers[:290]:
         layer.trainable = False
-    for layer in base_model.layers[249:]:
+    for layer in base_model.layers[290:]:
         layer.trainable = True
+        if 'conv' in layer.name:
+            setattr(layer, 'activity_regularizer', l2(l2_lambda))
     X = base_model.output
 
     # Add custom top layers
     X = GlobalAveragePooling2D()(X)
     X = Dropout(dropout)(X)
-    X = Dense(nodes_dense0, kernel_initializer='he_uniform', activation='relu', activity_regularizer=l2(l2_lambda))(X)
+    X = Dense(nodes_dense0, activation='relu', activity_regularizer=l2(l2_lambda))(X)
+    #X = LeakyReLU()(X)
+    X = BatchNormalization()(X)
+    #X = Dropout(dropout)(X)
+    #X = Dense(nodes_dense1, activity_regularizer=l2(l2_lambda))(X)
+    #X = LeakyReLU()(X)
     X = Dropout(dropout)(X)
-    X = Dense(nodes_dense1, kernel_initializer='he_uniform', activation='relu', activity_regularizer=l2(l2_lambda))(X)
     X = Dense(n_classes, bias_initializer=output_bias)(X)
     Y = Activation('softmax', dtype='float32', name='output')(X)
 
@@ -151,13 +170,77 @@ def inceptionv3(model_config, input_shape, metrics, n_classes, output_bias=None)
     return model
 
 
-def vgg16(model_config, input_shape, metrics, n_classes, output_bias=None):
+def mobilenetv2(model_config, input_shape, metrics, n_classes, mixed_precision=False, output_bias=None):
+    '''
+    Defines a model based on a pretrained MobileNetV2 for multiclass US classification.
+    :param model_config: A dictionary of parameters associated with the model architecture
+    :param input_shape: The shape of the model input
+    :param metrics: Metrics to track model's performance
+    :param n_classes: # of classes in data
+    :param mixed_precision: Whether to use mixed precision (use if you have GPU with compute capacity >= 7.0)
+    :param output_bias: bias initializer of output layer
+    :return: a Keras Model object with the architecture defined in this method
+    '''
+
+    # Set hyperparameters
+    nodes_dense0 = model_config['NODES_DENSE0']
+    nodes_dense1 = model_config['NODES_DENSE1']
+    lr = model_config['LR']
+    dropout = model_config['DROPOUT']
+    l2_lambda = model_config['L2_LAMBDA']
+    if model_config['OPTIMIZER'] == 'sgd':
+        optimizer = SGD(learning_rate=lr, momentum=0.9)
+    else:
+        optimizer = Adam(learning_rate=lr)
+    print("MODEL CONFIG: ", model_config)
+    if mixed_precision:
+        tf.train.experimental.enable_mixed_precision_graph_rewrite(optimizer)
+
+    if output_bias is not None:
+        output_bias = Constant(output_bias)     # Set initial output bias
+
+    # Start with pretrained MobileNetV2
+    X_input = Input(input_shape, name='input')
+    base_model = MobileNetV2(include_top=False, weights='imagenet', input_shape=input_shape, input_tensor=X_input)
+    
+    for layer in base_model.layers:
+        if 'Conv_1' in layer.name:
+            layer.trainable = True
+            if 'Conv_1' == layer.name:
+                setattr(layer, 'activity_regularizer', l2(l2_lambda))
+            print("Trainable layer", layer.name)
+        else:
+            layer.trainable = False
+    X = base_model.output
+
+    # Add custom top layers
+    X = GlobalAveragePooling2D()(X)
+    X = Dropout(dropout)(X)
+    X = Dense(nodes_dense0, activation='relu', activity_regularizer=l2(l2_lambda))(X)
+    #X = LeakyReLU()(X)
+    X = BatchNormalization()(X)
+    #X = Dropout(dropout)(X)
+    #X = Dense(nodes_dense1, activity_regularizer=l2(l2_lambda))(X)
+    #X = LeakyReLU()(X)
+    X = Dropout(dropout)(X)
+    X = Dense(n_classes, bias_initializer=output_bias)(X)
+    Y = Activation('softmax', dtype='float32', name='output')(X)
+
+    # Set model loss function, optimizer, metrics.
+    model = Model(inputs=X_input, outputs=Y)
+    model.summary()
+    model.compile(loss='categorical_crossentropy', optimizer=optimizer, metrics=metrics)
+    return model
+    
+
+def vgg16(model_config, input_shape, metrics, n_classes, mixed_precision=False, output_bias=None):
     '''
     Defines a model based on a pretrained ResNet50V2 for multiclass X-ray classification.
     :param model_config: A dictionary of parameters associated with the model architecture
     :param input_shape: The shape of the model input
     :param metrics: Metrics to track model's performance
     :param n_classes: # of classes in data
+    :param mixed_precision: Whether to use mixed precision (use if you have GPU with compute capacity >= 7.0)
     :param output_bias: bias initializer of output layer
     :return: a Keras Model object with the architecture defined in this method
     '''
@@ -170,6 +253,8 @@ def vgg16(model_config, input_shape, metrics, n_classes, output_bias=None):
     l2_lambda = model_config['L2_LAMBDA']
     optimizer = Adam(learning_rate=lr)
     print("MODEL CONFIG: ", model_config)
+    if mixed_precision:
+        tf.train.experimental.enable_mixed_precision_graph_rewrite(optimizer)
 
     if output_bias is not None:
         output_bias = Constant(output_bias)     # Set initial output bias
@@ -270,19 +355,21 @@ def identity_block(X, kernel_size, filters, stage, block):
     return X
 
 
-def custom_resnet(model_config, input_shape, metrics, n_classes, output_bias=None):
+def custom_resnet(model_config, input_shape, metrics, n_classes, mixed_precision=False, output_bias=None):
     '''
     Defines a deep convolutional neural network model with residual connections for multiclass image classification.
     :param model_config: A dictionary of parameters associated with the model architecture
     :param input_shape: The shape of the model input
     :param metrics: Metrics to track model's performance
     :param n_classes: # of classes in data
+    :param mixed_precision: Whether to use mixed precision (use if you have GPU with compute capacity >= 7.0)
     :param output_bias: bias initializer of output layer
     :return: a Keras Model object with the architecture defined in this method
     '''
 
     # Set hyperparameters
     nodes_dense0 = model_config['NODES_DENSE0']
+    nodes_dense1 = model_config['NODES_DENSE1']
     lr = model_config['LR']
     dropout = model_config['DROPOUT']
     l2_lambda = model_config['L2_LAMBDA']
@@ -295,6 +382,8 @@ def custom_resnet(model_config, input_shape, metrics, n_classes, output_bias=Non
     strides = eval(model_config['STRIDES'])
     print("MODEL CONFIG: ", model_config)
     pad = kernel_size[0] // 2
+    if mixed_precision:
+        tf.train.experimental.enable_mixed_precision_graph_rewrite(optimizer)
 
     if output_bias is not None:
         output_bias = Constant(output_bias)     # Set initial output bias
@@ -329,6 +418,69 @@ def custom_resnet(model_config, input_shape, metrics, n_classes, output_bias=Non
     X = Dense(n_classes, bias_initializer=output_bias)(X)
     Y = Activation('softmax', dtype='float32', name='output')(X)
 
+    # Set model loss function, optimizer, metrics.
+    model = Model(inputs=X_input, outputs=Y)
+    model.summary()
+    model.compile(loss='categorical_crossentropy', optimizer=optimizer, metrics=metrics)
+    return model
+    
+def custom_ffcnn(model_config, input_shape, metrics, n_classes, mixed_precision=False, output_bias=None):
+    '''
+    Defines a feedforward convolutional neural network model with residual connections for multiclass image classification.
+    :param model_config: A dictionary of parameters associated with the model architecture
+    :param input_shape: The shape of the model input
+    :param metrics: Metrics to track model's performance
+    :param n_classes: # of classes in data
+    :param mixed_precision: Whether to use mixed precision (use if you have GPU with compute capacity >= 7.0)
+    :param output_bias: bias initializer of output layer
+    :return: a Keras Model object with the architecture defined in this method
+    '''
+    
+    # Set hyperparameters
+    nodes_dense0 = model_config['NODES_DENSE0']
+    nodes_dense1 = model_config['NODES_DENSE1']
+    lr = model_config['LR']
+    dropout = model_config['DROPOUT']
+    l2_lambda = model_config['L2_LAMBDA']
+    optimizer = Adam(learning_rate=lr)
+    init_filters = model_config['INIT_FILTERS']
+    filter_exp_base = model_config['FILTER_EXP_BASE']
+    n_blocks = model_config['BLOCKS']
+    kernel_size = eval(model_config['KERNEL_SIZE'])
+    max_pool_size = eval(model_config['MAXPOOL_SIZE'])
+    strides = eval(model_config['STRIDES'])
+    pad = kernel_size[0] // 2
+    print("MODEL CONFIG: ", model_config)
+    if mixed_precision:
+        tf.train.experimental.enable_mixed_precision_graph_rewrite(optimizer)
+    
+    if output_bias is not None:
+        output_bias = Constant(output_bias)     # Set initial output bias
+
+    # Input layer
+    X_input = Input(input_shape)
+    X = X_input
+    X = ZeroPadding2D((pad, pad))(X)
+    
+    # Add blocks of convolutions and max pooling
+    for i in range(n_blocks):
+        filters = init_filters * (2 ** i)
+        X = Conv2D(filters=filters, kernel_size=kernel_size, strides=strides, padding='same', name='conv2d_block' + str(i) + '_0',
+                   kernel_initializer='he_uniform', activation='relu', activity_regularizer=l2(l2_lambda))(X)
+        X = Conv2D(filters=filters, kernel_size=kernel_size, strides=strides, padding='same', name='conv2d_block' + str(i) + '_1',
+                   kernel_initializer='he_uniform', activation='relu', activity_regularizer=l2(l2_lambda))(X)
+        X = BatchNormalization(axis=3, name='bn_block' + str(i))(X)
+        X = MaxPool2D(max_pool_size, padding='same', name='maxpool' + str(i))(X)
+    
+    # Model head
+    X = GlobalAveragePooling2D(name='gloval_avgpool')(X)
+    X = Dropout(dropout)(X)
+    X = Dense(nodes_dense0, kernel_initializer='he_uniform', activity_regularizer=l2(l2_lambda), activation='relu', name='fc0')(X)
+    X = Dropout(dropout)(X)
+    X = Dense(nodes_dense1, kernel_initializer='he_uniform', activity_regularizer=l2(l2_lambda), activation='relu', name='fc1')(X)
+    X = Dense(n_classes, bias_initializer=output_bias)(X)
+    Y = Activation('softmax', dtype='float32', name='output')(X)
+    
     # Set model loss function, optimizer, metrics.
     model = Model(inputs=X_input, outputs=Y)
     model.summary()

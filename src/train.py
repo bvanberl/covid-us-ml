@@ -1,14 +1,18 @@
 import pandas as pd
+import os
 import yaml
 import dill
 import random
 import tensorflow.summary as tf_summary
 from math import ceil
+import tensorflow as tf
 from tensorflow.keras.metrics import BinaryAccuracy, CategoricalAccuracy, Precision, Recall, AUC
 from tensorflow.keras.models import save_model
 from tensorflow.keras.callbacks import EarlyStopping, TensorBoard, ReduceLROnPlateau
 from tensorflow.keras.preprocessing.image import ImageDataGenerator
-from tensorflow.keras.applications.resnet_v2 import preprocess_input
+from tensorflow.keras.applications.resnet_v2 import preprocess_input as resnet_preprocess
+from tensorflow.keras.applications.inception_v3 import preprocess_input as inceptionv3_preprocess
+from tensorflow.keras.applications.mobilenet_v2 import preprocess_input as mobilenetv2_preprocess
 from tensorboard.plugins.hparams import api as hp
 from src.models.models import *
 from src.visualization.visualize import *
@@ -54,14 +58,39 @@ def train_model(cfg, data, callbacks, verbose=1):
     :param verbose: Verbosity mode to pass to model.fit_generator()
     :return: Trained model and associated performance metrics on the test set
     '''
+    
+    if cfg['TRAIN']['MODEL_DEF'] == 'resnet50v2':
+        model_def = resnet50v2
+        preprocessing_function = resnet_preprocess
+    elif cfg['TRAIN']['MODEL_DEF'] == 'resnet101v2':
+        model_def = resnet101v2
+        preprocessing_function = resnet_preprocess
+    elif cfg['TRAIN']['MODEL_DEF'] == 'inceptionv3':
+        model_def = inceptionv3
+        preprocessing_function = inceptionv3_preprocess
+    elif cfg['TRAIN']['MODEL_DEF'] == 'vgg16':
+        model_def = vgg16
+        preprocessing_function = vgg16_preprocess
+    elif cfg['TRAIN']['MODEL_DEF'] == 'mobilenetv2':
+        model_def = mobilenetv2
+    elif cfg['TRAIN']['MODEL_DEF'] == 'custom_resnet':
+        model_def = custom_resnet
+    else:
+        model_def = custom_ffcnn
 
     # Create ImageDataGenerators. For training data: randomly zoom, stretch, horizontally flip image as data augmentation.
-    train_img_gen = ImageDataGenerator(zoom_range=0.35, horizontal_flip=True, width_shift_range=0.35,
-                                       height_shift_range=0.35, shear_range=30, rotation_range=50,
-                                       samplewise_std_normalization=True,
-                                       samplewise_center=True)
-    val_img_gen = ImageDataGenerator(samplewise_std_normalization=True, samplewise_center=True)
-    test_img_gen = ImageDataGenerator(samplewise_std_normalization=True, samplewise_center=True)
+    if cfg['TRAIN']['MODEL_DEF'] in ['custom_resnet', 'custom_ffcnn']:
+        train_img_gen = ImageDataGenerator(zoom_range=0.10, horizontal_flip=True, vertical_flip=True, width_shift_range=0.2,
+                                           height_shift_range=0.2, shear_range=20, rotation_range=50,
+                                           samplewise_center=True, samplewise_std_normalization=True)
+        val_img_gen = ImageDataGenerator(samplewise_center=True, samplewise_std_normalization=True)
+        test_img_gen = ImageDataGenerator(samplewise_center=True, samplewise_std_normalization=True)
+    else:
+        train_img_gen = ImageDataGenerator(zoom_range=0.10, horizontal_flip=True, vertical_flip=True, width_shift_range=0.2,
+                                           height_shift_range=0.2, shear_range=20, rotation_range=50,
+                                           preprocessing_function=preprocessing_function)
+        val_img_gen = ImageDataGenerator(preprocessing_function=preprocessing_function)
+        test_img_gen = ImageDataGenerator(preprocessing_function=preprocessing_function)
 
     # Create DataFrameIterators
     img_shape = tuple(cfg['DATA']['IMG_DIM'])
@@ -98,17 +127,6 @@ def train_model(cfg, data, callbacks, verbose=1):
            for i in range(len(histogram))])
     input_shape = cfg['DATA']['IMG_DIM'] + [3]
 
-    if cfg['TRAIN']['MODEL_DEF'] == 'resnet50v2':
-        model_def = resnet50v2
-    elif cfg['TRAIN']['MODEL_DEF'] == 'resnet101v2':
-        model_def = resnet101v2
-    elif cfg['TRAIN']['MODEL_DEF'] == 'inceptionv3':
-        model_def = inceptionv3
-    elif cfg['TRAIN']['MODEL_DEF'] == 'vgg16':
-        model_def = vgg16
-    else:
-        model_def = custom_resnet
-
     n_classes = len(cfg['DATA']['CLASSES'])
 
     # Compute output bias
@@ -117,18 +135,23 @@ def train_model(cfg, data, callbacks, verbose=1):
 
 
     # Define model
-    model = model_def(cfg['NN'][cfg['TRAIN']['MODEL_DEF'].upper()], input_shape, metrics, n_classes,
-                      output_bias=output_bias)
+    strategy = tf.distribute.MirroredStrategy()
+    print("Number of devices: {}".format(strategy.num_replicas_in_sync))
+
+    # Open a strategy scope.
+    with strategy.scope():
+        model = model_def(cfg['NN'][cfg['TRAIN']['MODEL_DEF'].upper()], input_shape, metrics, n_classes,
+                          mixed_precision=cfg['TRAIN']['MIXED_PRECISION'], output_bias=None)
 
     # Train the model.
     steps_per_epoch = ceil(train_generator.n / train_generator.batch_size)
     val_steps = ceil(val_generator.n / val_generator.batch_size)
-    history = model.fit_generator(train_generator, steps_per_epoch=steps_per_epoch, epochs=cfg['TRAIN']['EPOCHS'],
+    history = model.fit(train_generator, steps_per_epoch=steps_per_epoch, epochs=cfg['TRAIN']['EPOCHS'],
                                   validation_data=val_generator, validation_steps=val_steps, callbacks=callbacks,
                                   verbose=verbose, class_weight=class_weight)
 
     # Run the model on the test set and print the resulting performance metrics.
-    test_results = model.evaluate_generator(test_generator, verbose=1)
+    test_results = model.evaluate(test_generator, verbose=1)
     test_metrics = {}
     test_summary_str = [['**Metric**', '**Value**']]
     for metric, value in zip(model.metrics_names, test_results):
@@ -268,7 +291,7 @@ def log_test_results(cfg, model, test_generator, test_metrics, log_dir):
     '''
 
     # Visualization of test results
-    test_predictions = model.predict_generator(test_generator, verbose=0)
+    test_predictions = model.predict(test_generator, verbose=0)
     test_labels = test_generator.labels
     plt = plot_roc(test_labels, test_predictions, list(test_generator.class_indices.keys()), dir_path=cfg['PATHS']['IMAGES'])
     roc_img = plot_to_tensor()
@@ -312,12 +335,16 @@ def train_experiment(cfg=None, experiment='single_train', save_weights=True, wri
     # Load project config data
     if cfg is None:
         cfg = yaml.full_load(open(os.getcwd() + "/config.yml", 'r'))
+    
+    # Enable mixed precision if desired
+    if cfg['TRAIN']['MIXED_PRECISION']:
+        os.environ['TF_ENABLE_AUTO_MIXED_PRECISION'] = '1'
 
     # Set logs directory
     cur_date = datetime.datetime.now().strftime('%Y%m%d-%H%M%S')
-    log_dir = cfg['PATHS']['LOGS'] + "training\\" + cur_date if write_logs else None
-    if not os.path.exists(cfg['PATHS']['LOGS'] + "training\\"):
-        os.makedirs(cfg['PATHS']['LOGS'] + "training\\")
+    log_dir = cfg['PATHS']['LOGS'] + "training/" + cur_date if write_logs else None
+    if not os.path.exists(cfg['PATHS']['LOGS'] + "training/"):
+        os.makedirs(cfg['PATHS']['LOGS'] + "training/")
 
     # Load dataset file paths and labels
     data = {}
@@ -330,17 +357,17 @@ def train_experiment(cfg=None, experiment='single_train', save_weights=True, wri
 
     # Conduct the desired train experiment
     if experiment == 'hparam_search':
-        log_dir = cfg['PATHS']['LOGS'] + "hparam_search\\" + cur_date
+        log_dir = cfg['PATHS']['LOGS'] + "hparam_search/" + cur_date
         random_hparam_search(cfg, data, callbacks, log_dir)
     else:
         if experiment == 'multi_train':
-            base_log_dir = cfg['PATHS']['LOGS'] + "training\\" if write_logs else None
+            base_log_dir = cfg['PATHS']['LOGS'] + "training/" if write_logs else None
             model, test_metrics, test_generator, cur_date = multi_train(cfg, data, callbacks, base_log_dir)
         else:
             if write_logs:
                 tensorboard = TensorBoard(log_dir=log_dir, histogram_freq=1)
                 callbacks.append(tensorboard)
-            model, test_metrics, test_generator = train_model(cfg, data, callbacks, verbose=2)
+            model, test_metrics, test_generator = train_model(cfg, data, callbacks, verbose=1)
             if write_logs:
                 log_test_results(cfg, model, test_generator, test_metrics, log_dir)
         if save_weights:
