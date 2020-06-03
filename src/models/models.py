@@ -9,7 +9,8 @@ from tensorflow.keras.applications.resnet_v2 import ResNet50V2, ResNet101V2
 from tensorflow.keras.applications.vgg16 import VGG16
 from tensorflow.keras.applications.inception_v3 import InceptionV3
 from tensorflow.keras.applications.mobilenet_v2 import MobileNetV2
-
+import yaml
+import os
 
 def resnet50v2(model_config, input_shape, metrics, n_classes, mixed_precision=False, output_bias=None):
     '''
@@ -252,6 +253,7 @@ def vgg16(model_config, input_shape, metrics, n_classes, mixed_precision=False, 
     dropout = model_config['DROPOUT']
     l2_lambda = model_config['L2_LAMBDA']
     optimizer = Adam(learning_rate=lr)
+    frozen_layers = model_config['FROZEN_LAYERS']
     print("MODEL CONFIG: ", model_config)
     if mixed_precision:
         tf.train.experimental.enable_mixed_precision_graph_rewrite(optimizer)
@@ -262,6 +264,13 @@ def vgg16(model_config, input_shape, metrics, n_classes, mixed_precision=False, 
     # Start with pretrained ResNet50V2
     X_input = Input(input_shape, name='input')
     base_model = VGG16(include_top=False, weights='imagenet', input_shape=input_shape, input_tensor=X_input)
+    
+    # Freeze desired convolutional blocks set in config.yml
+    for layers in range(len(frozen_layers)):
+        layer2freeze = frozen_layers[layers]
+        print('Freezing layer: ' + str(layer2freeze))
+        base_model.layers[layer2freeze].trainable = False
+    
     X = base_model.output
 
     # Add custom top layers
@@ -486,3 +495,14 @@ def custom_ffcnn(model_config, input_shape, metrics, n_classes, mixed_precision=
     model.summary()
     model.compile(loss='categorical_crossentropy', optimizer=optimizer, metrics=metrics)
     return model
+
+'''
+For figuring out VGG16 architecture & how to manipulate freezing desired blocks
+
+cfg = yaml.full_load(open(os.getcwd() + "/config.yml", 'r'))
+model_config = cfg['NN']['VGG16']
+input_shape= cfg['DATA']['IMG_DIM']
+metrics = cfg['TRAIN']['METRIC_PREFERENCE']
+
+vgg16(model_config = model_config, input_shape = [244,244,3], metrics = metrics, n_classes = 3, output_bias=None)
+'''
