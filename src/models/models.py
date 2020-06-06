@@ -335,31 +335,31 @@ def custom_vgg16(model_config, input_shape, metrics, n_classes, mixed_precision 
 
     # Block 1
     X = conv_block(32, dropout=dropout, activation=activation, block=1, layer=1)(X_input)
-    X = conv_block(32, dropout=dropout, activation=activation, block=1, layer=2)(x)
-    X = MaxPool2D((2, 2), strides=(2, 2), name='block1_pool')(x)
+    X = conv_block(32, dropout=dropout, activation=activation, block=1, layer=2)(X)
+    X = MaxPool2D((2, 2), strides=(2, 2), name='block1_pool')(X)
 
     # Block 2
-    X = conv_block(64, dropout=dropout, activation=activation, block=2, layer=1)(x)
-    X = conv_block(64, dropout=dropout, activation=activation, block=2, layer=2)(x)
-    X = MaxPool2D((2, 2), strides=(2, 2), name='block2_pool')(x)
+    X = conv_block(64, dropout=dropout, activation=activation, block=2, layer=1)(X)
+    X = conv_block(64, dropout=dropout, activation=activation, block=2, layer=2)(X)
+    X = MaxPool2D((2, 2), strides=(2, 2), name='block2_pool')(X)
 
     # Block 3
-    X = conv_block(128, dropout=dropout, activation=activation, block=3, layer=1)(x)
-    X = conv_block(128, dropout=dropout, activation=activation, block=3, layer=2)(x)
-    X = conv_block(128, dropout=dropout, activation=activation, block=3, layer=3)(x)
-    X = MaxPooling2D((2, 2), strides=(2, 2), name='block3_pool')(x)
+    X = conv_block(128, dropout=dropout, activation=activation, block=3, layer=1)(X)
+    X = conv_block(128, dropout=dropout, activation=activation, block=3, layer=2)(X)
+    X = conv_block(128, dropout=dropout, activation=activation, block=3, layer=3)(X)
+    X = MaxPooling2D((2, 2), strides=(2, 2), name='block3_pool')(X)
 
     # Block 4
-    X = conv_block(256, dropout=dropout, activation=activation, block=4, layer=1)(x)
-    X = conv_block(256, dropout=dropout, activation=activation, block=4, layer=2)(x)
-    X = conv_block(256, dropout=dropout, activation=activation, block=4, layer=3)(x)
-    X = MaxPooling2D((2, 2), strides=(2, 2), name='block4_pool')(x)
+    X = conv_block(256, dropout=dropout, activation=activation, block=4, layer=1)(X)
+    X = conv_block(256, dropout=dropout, activation=activation, block=4, layer=2)(X)
+    X = conv_block(256, dropout=dropout, activation=activation, block=4, layer=3)(X)
+    X = MaxPooling2D((2, 2), strides=(2, 2), name='block4_pool')(X)
 
     # Block 5
-    X = conv_block(256, dropout=dropout, activation=activation, block=5, layer=1)(x)
-    X = conv_block(256, dropout=dropout, activation=activation, block=5, layer=2)(x)
-    X = conv_block(256, dropout=dropout, activation=activation, block=5, layer=3)(x)
-    X = MaxPooling2D((2, 2), strides=(2, 2), name='block5_pool')(x)
+    X = conv_block(256, dropout=dropout, activation=activation, block=5, layer=1)(X)
+    X = conv_block(256, dropout=dropout, activation=activation, block=5, layer=2)(X)
+    X = conv_block(256, dropout=dropout, activation=activation, block=5, layer=3)(X)
+    X = MaxPooling2D((2, 2), strides=(2, 2), name='block5_pool')(X)
 
     # Freeze desired conv layers set in config.yml
     for layers in range(len(frozen_layers)):
