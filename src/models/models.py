@@ -273,11 +273,9 @@ def vgg16(model_config, input_shape, metrics, n_classes, mixed_precision=False, 
 
     # Add regularization to VGG16 conv layers
     for layers in base_model.layers:
-        if layer.trainable and 'conv' in layer.name:
+        if base_model.layers[layers].trainable and 'conv' in layer.name:
             setattr(layer, 'activity_regulizer', l2(l2_lambda))
             print('Adding regularization to: ' + base_model.layers[layers])
-
-
     
     X = base_model.output
 
@@ -506,11 +504,10 @@ def custom_ffcnn(model_config, input_shape, metrics, n_classes, mixed_precision=
 
 '''
 For figuring out VGG16 architecture & how to manipulate freezing desired blocks
-
+'''
 cfg = yaml.full_load(open(os.getcwd() + "/config.yml", 'r'))
 model_config = cfg['NN']['VGG16']
 input_shape= cfg['DATA']['IMG_DIM']
 metrics = cfg['TRAIN']['METRIC_PREFERENCE']
 
 vgg16(model_config = model_config, input_shape = [244,244,3], metrics = metrics, n_classes = 3, output_bias=None)
-'''
