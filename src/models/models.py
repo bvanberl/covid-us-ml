@@ -272,8 +272,8 @@ def vgg16(model_config, input_shape, metrics, n_classes, mixed_precision=False, 
         base_model.layers[layer2freeze].trainable = False
 
     # Add regularization to VGG16 conv layers
-    for layers in range(len(base_model.layers)):
-        if base_model.layers[layers].trainable and 'conv' in layers.name:
+    for layer in base_model.layers:
+        if base_model.layers[layers].trainable and 'conv' in layer.name:
             setattr(layer, 'activity_regulizer', l2(l2_lambda))
             print('Adding regularization to: ' + base_model.layers[layers])
     
