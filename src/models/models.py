@@ -296,6 +296,98 @@ def vgg16(model_config, input_shape, metrics, n_classes, mixed_precision=False, 
     model.compile(loss='categorical_crossentropy', optimizer=optimizer, metrics=metrics)
     return model
 
+def conv_block(units, dropout=0.2, activation='relu', block=1, layer=1):
+
+    def layer_wrapper(inp):
+        x = Conv2D(units, (3, 3), padding='same', name='block{}_conv{}'.format(block, layer))(inp)
+        x = BatchNormalization(name='block{}_bn{}'.format(block, layer))(x)
+        x = Activation(activation, name='block{}_act{}'.format(block, layer))(x)
+        x = Dropout(dropout, name='block{}_dropout{}'.format(block, layer))(x)
+        return x
+
+    return layer_wrapper
+        
+
+def VGG16_BN(model_config, input_shape, metrics, n_classes, mixed_precision = False, output_bias = None, activation='relu'):
+    """Instantiates the VGG16 architecture with Batch Normalization
+    :param input_tensor: Keras tensor (i.e. output of `layers.Input()`) to use as image input for the model.
+    :param input_shape: shape tuple
+    :param classes: optional number of classes to classify images
+    :returnL: a VGG16 Keras model with BN & dropout
+    """
+
+    # Set hyperparameters
+    nodes_dense0 = model_config['NODES_DENSE0']
+    lr = model_config['LR']
+    dropout = model_config['DROPOUT']
+    l2_lambda = model_config['L2_LAMBDA']
+    optimizer = Adam(learning_rate=lr)
+    frozen_layers = model_config['FROZEN_LAYERS']
+    print("MODEL CONFIG: ", model_config)
+    
+    if mixed_precision:
+        tf.train.experimental.enable_mixed_precision_graph_rewrite(optimizer)
+
+    if output_bias is not None:
+        output_bias = Constant(output_bias)     # Set initial output bias
+
+    X_input = Input(input_shape, name='input')
+
+    # Block 1
+    X = conv_block(32, dropout=dropout, activation=activation, block=1, layer=1)(X_input)
+    X = conv_block(32, dropout=dropout, activation=activation, block=1, layer=2)(x)
+    X = MaxPool2D((2, 2), strides=(2, 2), name='block1_pool')(x)
+
+    # Block 2
+    X = conv_block(64, dropout=dropout, activation=activation, block=2, layer=1)(x)
+    X = conv_block(64, dropout=dropout, activation=activation, block=2, layer=2)(x)
+    X = MaxPool2D((2, 2), strides=(2, 2), name='block2_pool')(x)
+
+    # Block 3
+    X = conv_block(128, dropout=dropout, activation=activation, block=3, layer=1)(x)
+    X = conv_block(128, dropout=dropout, activation=activation, block=3, layer=2)(x)
+    X = conv_block(128, dropout=dropout, activation=activation, block=3, layer=3)(x)
+    X = MaxPooling2D((2, 2), strides=(2, 2), name='block3_pool')(x)
+
+    # Block 4
+    X = conv_block(256, dropout=dropout, activation=activation, block=4, layer=1)(x)
+    X = conv_block(256, dropout=dropout, activation=activation, block=4, layer=2)(x)
+    X = conv_block(256, dropout=dropout, activation=activation, block=4, layer=3)(x)
+    X = MaxPooling2D((2, 2), strides=(2, 2), name='block4_pool')(x)
+
+    # Block 5
+    X = conv_block(256, dropout=dropout, activation=activation, block=5, layer=1)(x)
+    X = conv_block(256, dropout=dropout, activation=activation, block=5, layer=2)(x)
+    X = conv_block(256, dropout=dropout, activation=activation, block=5, layer=3)(x)
+    X = MaxPooling2D((2, 2), strides=(2, 2), name='block5_pool')(x)
+
+    # Freeze desired conv layers set in config.yml
+    for layers in range(len(frozen_layers)):
+        layer2freeze = frozen_layers[layers]
+        print('Freezing layer: ' + str(layer2freeze))
+        X.layers[layer2freeze].trainable = False
+
+    # Add regularization to VGG16 conv layers
+    for layer in X.layers:
+        idx = 0
+        if X[0].trainable and 'conv' in layer.name:
+            setattr(layer, 'activity_regulizer', l2(l2_lambda))
+            print('Adding regularization to: ' + str(base_model.layers[layers]))
+        idx += 1
+
+    # Add custom top layers
+    X = GlobalAveragePooling2D()(X)
+    X = Dropout(dropout)(X)
+    X = Dense(nodes_dense0, kernel_initializer='he_uniform', activation='relu', activity_regularizer=l2(l2_lambda))(X)
+    X = Dropout(dropout)(X)
+    X = Dense(n_classes, bias_initializer=output_bias)(X)
+    Y = Activation('softmax', dtype='float32', name='output')(X)
+
+    # Set model loss function, optimizer, metrics.
+    model = Model(inputs=X_input, outputs=Y)
+    model.summary()
+    model.compile(loss='categorical_crossentropy', optimizer=optimizer, metrics=metrics)
+    return model
 
 def convolutional_block(X, kernel_size, filters, stage, block, s=2):
     '''
