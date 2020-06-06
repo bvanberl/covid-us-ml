@@ -347,19 +347,19 @@ def custom_vgg16(model_config, input_shape, metrics, n_classes, mixed_precision 
     X = conv_block(128, dropout=dropout, activation=activation, block=3, layer=1)(X)
     X = conv_block(128, dropout=dropout, activation=activation, block=3, layer=2)(X)
     X = conv_block(128, dropout=dropout, activation=activation, block=3, layer=3)(X)
-    X = MaxPooling2D((2, 2), strides=(2, 2), name='block3_pool')(X)
+    X = MaxPool2D((2, 2), strides=(2, 2), name='block3_pool')(X)
 
     # Block 4
     X = conv_block(256, dropout=dropout, activation=activation, block=4, layer=1)(X)
     X = conv_block(256, dropout=dropout, activation=activation, block=4, layer=2)(X)
     X = conv_block(256, dropout=dropout, activation=activation, block=4, layer=3)(X)
-    X = MaxPooling2D((2, 2), strides=(2, 2), name='block4_pool')(X)
+    X = MaxPool2D((2, 2), strides=(2, 2), name='block4_pool')(X)
 
     # Block 5
     X = conv_block(256, dropout=dropout, activation=activation, block=5, layer=1)(X)
     X = conv_block(256, dropout=dropout, activation=activation, block=5, layer=2)(X)
     X = conv_block(256, dropout=dropout, activation=activation, block=5, layer=3)(X)
-    X = MaxPooling2D((2, 2), strides=(2, 2), name='block5_pool')(X)
+    X = MaxPool2D((2, 2), strides=(2, 2), name='block5_pool')(X)
 
     # Freeze desired conv layers set in config.yml
     for layers in range(len(frozen_layers)):
