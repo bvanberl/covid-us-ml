@@ -26,11 +26,11 @@ DATA:
   CLASSES: ['COVID', 'NCOVID', 'SMOOTH']          # Classes for multiclass classification
 
 TRAIN:
-  MODEL_DEF: 'custom_ffcnn'                                # One of {'resnet50v2', 'resnet101v2', 'inceptionv3', 'vgg16', 'mobilenetv2', 'custom_resnet', 'custom_ffcnn'}
+  MODEL_DEF: 'mobilenetv2'                                # One of {'resnet50v2', 'resnet101v2', 'inceptionv3', 'vgg16', 'mobilenetv2', 'inceptionresnetv2', 'custom_resnet', 'custom_ffcnn'}
   #CLASS_MULTIPLIER: [1.0, 1.0]                         # Class multiplier for binary classification
-  CLASS_MULTIPLIER: [1.5, 1.5, 1.0]                       # Class multiplier for multiclass classification
+  CLASS_MULTIPLIER: [1.0, 1.0, 1.0]                       # Class multiplier for multiclass classification
   EXPERIMENT_TYPE: 'single_train'                           # One of {'single_train', 'multi_train', 'hparam_search'}
-  BATCH_SIZE: 480
+  BATCH_SIZE: 528
   EPOCHS: 300
   PATIENCE: 5
   METRIC_PREFERENCE: ['auc', 'recall', 'precision', 'loss']
@@ -66,7 +66,14 @@ NN:
     DROPOUT: 0.5
     L2_LAMBDA: 0.01
   MOBILENETV2:
-    NODES_DENSE0: 32
+    NODES_DENSE0: 128
+    NODES_DENSE1: 16
+    LR: 0.000001
+    DROPOUT: 0.5
+    L2_LAMBDA: 0.001
+    OPTIMIZER: 'adam'
+  INCEPTIONRESNETV2:
+    NODES_DENSE0: 64
     NODES_DENSE1: 16
     LR: 0.0001
     DROPOUT: 0.5
