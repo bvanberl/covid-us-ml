@@ -76,11 +76,13 @@ def train_model(cfg, data, callbacks, verbose=1):
         model_def = mobilenetv2
     elif cfg['TRAIN']['MODEL_DEF'] == 'custom_resnet':
         model_def = custom_resnet
+    elif cfg['TRAIN']['MODEL_DEF'] == 'custom_vgg16':
+        model_def = custom_vgg16
     else:
         model_def = custom_ffcnn
 
     # Create ImageDataGenerators. For training data: randomly zoom, stretch, horizontally flip image as data augmentation.
-    if cfg['TRAIN']['MODEL_DEF'] in ['custom_resnet', 'custom_ffcnn']:
+    if cfg['TRAIN']['MODEL_DEF'] in ['custom_resnet', 'custom_ffcnn', 'custom_vgg16']:
         train_img_gen = ImageDataGenerator(zoom_range=0.10, horizontal_flip=True, width_shift_range=0.2,
                                            height_shift_range=0.2, shear_range=20, rotation_range=50,
                                            samplewise_center=True, samplewise_std_normalization=True)

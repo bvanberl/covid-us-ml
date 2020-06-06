@@ -308,7 +308,7 @@ def conv_block(units, dropout=0.2, activation='relu', block=1, layer=1):
     return layer_wrapper
         
 
-def VGG16_BN(model_config, input_shape, metrics, n_classes, mixed_precision = False, output_bias = None, activation='relu'):
+def custom_vgg16(model_config, input_shape, metrics, n_classes, mixed_precision = False, output_bias = None, activation='relu'):
     """Instantiates the VGG16 architecture with Batch Normalization
     :param input_tensor: Keras tensor (i.e. output of `layers.Input()`) to use as image input for the model.
     :param input_shape: shape tuple
