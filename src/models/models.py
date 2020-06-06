@@ -261,15 +261,23 @@ def vgg16(model_config, input_shape, metrics, n_classes, mixed_precision=False, 
     if output_bias is not None:
         output_bias = Constant(output_bias)     # Set initial output bias
 
-    # Start with pretrained ResNet50V2
+    # Start with pretrained VGG16
     X_input = Input(input_shape, name='input')
     base_model = VGG16(include_top=False, weights='imagenet', input_shape=input_shape, input_tensor=X_input)
     
-    # Freeze desired convolutional blocks set in config.yml
+    # Freeze desired conv layers set in config.yml
     for layers in range(len(frozen_layers)):
         layer2freeze = frozen_layers[layers]
         print('Freezing layer: ' + str(layer2freeze))
         base_model.layers[layer2freeze].trainable = False
+
+    # Add regularization to VGG16 conv layers
+    for layers in base_model.layers:
+        if layer.trainable and 'conv' in layer.name:
+            setattr(layer, 'activity_regulizer', l2(l2_lambda))
+            print('Adding regularization to: ' + base_model.layers[layers])
+
+
     
     X = base_model.output
 
