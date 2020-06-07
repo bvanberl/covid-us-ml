@@ -301,7 +301,8 @@ def conv_block(units, dropout=0.2, activation='relu', block=1, layer=1):
     def layer_wrapper(inp):
         x = Conv2D(units, (3, 3), padding='same', name='block{}_conv{}'.format(block, layer))(inp)
         x = BatchNormalization(name='block{}_bn{}'.format(block, layer))(x)
-        x = Activation(activation, name='block{}_act{}'.format(block, layer))(x)
+        #x = Activation(activation, name='block{}_act{}'.format(block, layer))(x)
+        x = LeakyReLU()(x)
         x = Dropout(dropout, name='block{}_dropout{}'.format(block, layer))(x)
         return x
 
@@ -361,20 +362,6 @@ def custom_vgg16(model_config, input_shape, metrics, n_classes, mixed_precision 
     X = conv_block(256, dropout=dropout, activation=activation, block=5, layer=3)(X)
     X = MaxPool2D((2, 2), strides=(2, 2), name='block5_pool')(X)
 
-    # Freeze desired conv layers set in config.yml
-    for layers in range(len(frozen_layers)):
-        layer2freeze = frozen_layers[layers]
-        print('Freezing layer: ' + str(layer2freeze))
-        X.layers[layer2freeze].trainable = False
-
-    # Add regularization to VGG16 conv layers
-    for layer in X.layers:
-        idx = 0
-        if X[0].trainable and 'conv' in layer.name:
-            setattr(layer, 'activity_regulizer', l2(l2_lambda))
-            print('Adding regularization to: ' + str(base_model.layers[layers]))
-        idx += 1
-
     # Add custom top layers
     X = GlobalAveragePooling2D()(X)
     X = Dropout(dropout)(X)
@@ -385,6 +372,17 @@ def custom_vgg16(model_config, input_shape, metrics, n_classes, mixed_precision 
 
     # Set model loss function, optimizer, metrics.
     model = Model(inputs=X_input, outputs=Y)
+
+    # Add regularization to VGG16 conv layers
+    '''
+    for layer in model.layers:
+        idx = 0
+        if X[0].trainable and 'conv' in layer.name:
+            setattr(layer, 'activity_regulizer', l2(l2_lambda))
+            print('Adding regularization to: ' + str(base_model.layers[layers]))
+        idx += 1
+    '''
+
     model.summary()
     model.compile(loss='categorical_crossentropy', optimizer=optimizer, metrics=metrics)
     return model
