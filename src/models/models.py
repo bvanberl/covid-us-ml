@@ -303,7 +303,6 @@ def conv_block(units, dropout=0.2, activation='relu', block=1, layer=1):
         x = BatchNormalization(name='block{}_bn{}'.format(block, layer))(x)
         #x = Activation(activation, name='block{}_act{}'.format(block, layer))(x)
         x = LeakyReLU()(x)
-        x = Dropout(dropout, name='block{}_dropout{}'.format(block, layer))(x)
         return x
 
     return layer_wrapper
@@ -377,7 +376,7 @@ def custom_vgg16(model_config, input_shape, metrics, n_classes, mixed_precision 
     '''
     for layer in model.layers:
         idx = 0
-        if X[0].trainable and 'conv' in layer.name:
+        if 'conv' in layer.name:
             setattr(layer, 'activity_regulizer', l2(l2_lambda))
             print('Adding regularization to: ' + str(base_model.layers[layers]))
         idx += 1

@@ -35,7 +35,7 @@ TRAIN:
   PATIENCE: 5
   METRIC_PREFERENCE: ['auc', 'recall', 'precision', 'loss']
   NUM_RUNS: 10
-  NUM_GPUS: 5
+  NUM_GPUS: 1
   MIXED_PRECISION: true                         # Necessary for training with Tensor Cores
 
 NN:
@@ -67,10 +67,10 @@ NN:
     L2_LAMBDA: 0.01
     FROZEN_LAYERS: [1,2]                   #layers to freeze in base model to freeze {1,2,4,5,7,8,9,11,12,13,15,16,17}
   CUSTOM_VGG16:
-    NODES_DENSE0: 128
+    NODES_DENSE0: 64
     NODES_DENSE1: 32
-    LR: 0.000003
-    DROPOUT: 0.3
+    LR: 0.00001
+    DROPOUT: 0.5
     L2_LAMBDA: 0.01
     FROZEN_LAYERS: [1,2]                   #layers to freeze in base model to freeze {1,2,4,5,7,8,9,11,12,13,15,16,17}
   MOBILENETV2:
