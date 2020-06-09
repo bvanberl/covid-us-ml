@@ -26,11 +26,11 @@ DATA:
   CLASSES: ['COVID', 'NCOVID', 'SMOOTH']          # Classes for multiclass classification
 
 TRAIN:
-  MODEL_DEF: 'custom_vgg16'                                # One of {'resnet50v2', 'resnet101v2', 'inceptionv3', 'vgg16', 'mobilenetv2', 'custom_resnet', 'custom_ffcnn'}
+  MODEL_DEF: 'vgg16'                                # One of {'resnet50v2', 'resnet101v2', 'inceptionv3', 'vgg16', 'mobilenetv2', 'custom_resnet', 'custom_ffcnn'}
   #CLASS_MULTIPLIER: [1.0, 1.0]                         # Class multiplier for binary classification
   CLASS_MULTIPLIER: [1.5, 1.5, 1.0]                       # Class multiplier for multiclass classification
   EXPERIMENT_TYPE: 'single_train'                           # One of {'single_train', 'multi_train', 'hparam_search'}
-  BATCH_SIZE: 32
+  BATCH_SIZE: 16
   EPOCHS: 300
   PATIENCE: 5
   METRIC_PREFERENCE: ['auc', 'recall', 'precision', 'loss']
@@ -60,10 +60,10 @@ NN:
     L2_LAMBDA: 0.001
     OPTIMIZER: 'adam'
   VGG16:
-    NODES_DENSE0: 256
+    NODES_DENSE0: 128
     NODES_DENSE1: 32
-    LR: 0.000003
-    DROPOUT: 0.5
+    LR: 0.000001
+    DROPOUT: 0.6
     L2_LAMBDA: 0.01
     FROZEN_LAYERS: [1,2]                   #layers to freeze in base model to freeze {1,2,4,5,7,8,9,11,12,13,15,16,17}
   CUSTOM_VGG16:

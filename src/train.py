@@ -92,7 +92,7 @@ def train_model(cfg, data, callbacks, verbose=1):
     else:
         train_img_gen = ImageDataGenerator(zoom_range=0.10, horizontal_flip=True, width_shift_range=0.2,
                                            height_shift_range=0.2, shear_range=20, rotation_range=50,
-                                           preprocessing_function=preprocessing_function)
+                                           brightness_range=[0.7,1.3],preprocessing_function=preprocessing_function)
         val_img_gen = ImageDataGenerator(preprocessing_function=preprocessing_function)
         test_img_gen = ImageDataGenerator(preprocessing_function=preprocessing_function)
 
