@@ -1,15 +1,15 @@
 PATHS:
-  RAW_DATA: 'C:/Users/rober/Documents/Data/covid-us-ml/'                # Path to folder containing all raw data
-  COVID_DATA: 'C:/Users/rober/Documents/Data/covid-us-ml/COVID/'        # Path to COVID raw data
-  NCOVID_DATA: 'C:/Users/rober/Documents/Data/covid-us-ml/NCOVID/'      # Path to NCOVID raw data
-  SMOOTH_DATA: 'C:/Users/rober/Documents/Data/covid-us-ml/SMOOTH/'      # Path to SMOOTH raw data
+  RAW_DATA: '/home/ampc/raw/'                # Path to folder containing all raw data
+  COVID_DATA: '/home/ampc/raw/COVID/'        # Path to COVID raw data
+  NCOVID_DATA: '/home/ampc/raw/NCOVID/'      # Path to NCOVID raw data
+  SMOOTH_DATA: '/home/ampc/raw/SMOOTH/'      # Path to SMOOTH raw data
   PROCESSED_DATA: 'data/preprocessed/'
   TRAIN_SET: 'data/preprocessed/train_set.csv'
-  VAL_SET: 'data/preprocessed/val_set.csv'
-  TEST_SET: 'data/preprocessed/test_set.csv'
-  TRAIN_ENCOUNTERS: 'data/preprocessed/train_encounters.csv'
-  VAL_ENCOUNTERS: 'data/preprocessed/val_encounters.csv'
-  TEST_ENCOUNTERS: 'data/preprocessed/test_encounters.csv'
+  TEST1_SET: 'data/preprocessed/test1_set.csv'
+  TEST2_SET: 'data/preprocessed/test2_set.csv'
+  ENCOUNTERS_TRAINVAL: 'data/preprocessed/encounters_trainval.csv'
+  ENCOUNTERS_TEST1: 'data/preprocessed/encounters_test1.csv'
+  ENCOUNTERS_TEST2: 'data/preprocessed/encounters_test2.csv'
   GEN_IMAGES: 'documents/generated_images/'
   LOGS: 'results\\logs\\'
   IMAGES: 'documents/generated_images/'
@@ -21,16 +21,17 @@ PATHS:
 DATA:
   IMG_DIM: [224, 224]
   VAL_SPLIT: 0.08
-  TEST_SPLIT: 0.1
+  TEST1_SPLIT: 0.08
+  TEST2_SPLIT: 0.08
   #CLASSES: ['THICK', 'SMOOTH']                   # Classes for binary classification
   CLASSES: ['COVID', 'NCOVID', 'SMOOTH']          # Classes for multiclass classification
 
 TRAIN:
-  MODEL_DEF: 'vgg16'                                # One of {'resnet50v2', 'resnet101v2', 'inceptionv3', 'vgg16', 'mobilenetv2', 'custom_resnet', 'custom_ffcnn'}
+  MODEL_DEF: 'vgg16'                                # One of {'resnet50v2', 'resnet101v2', 'inceptionv3', 'vgg16', 'mobilenetv2', 'inceptionresnetv2', 'custom_resnet', 'custom_ffcnn'}
   #CLASS_MULTIPLIER: [1.0, 1.0]                         # Class multiplier for binary classification
-  CLASS_MULTIPLIER: [1.5, 1.5, 1.0]                       # Class multiplier for multiclass classification
+  CLASS_MULTIPLIER: [1.0, 1.0, 1.0]                       # Class multiplier for multiclass classification
   EXPERIMENT_TYPE: 'single_train'                           # One of {'single_train', 'multi_train', 'hparam_search'}
-  BATCH_SIZE: 16
+  BATCH_SIZE: 528
   EPOCHS: 300
   PATIENCE: 5
   METRIC_PREFERENCE: ['auc', 'recall', 'precision', 'loss']
@@ -66,15 +67,15 @@ NN:
     DROPOUT: 0.6
     L2_LAMBDA: 0.01
     FROZEN_LAYERS: [1,2]                   #layers to freeze in base model to freeze {1,2,4,5,7,8,9,11,12,13,15,16,17}
-  CUSTOM_VGG16:
-    NODES_DENSE0: 64
-    NODES_DENSE1: 32
-    LR: 0.00001
-    DROPOUT: 0.5
-    L2_LAMBDA: 0.01
-    FROZEN_LAYERS: [1,2]                   #layers to freeze in base model to freeze {1,2,4,5,7,8,9,11,12,13,15,16,17}
   MOBILENETV2:
-    NODES_DENSE0: 32
+    NODES_DENSE0: 128
+    NODES_DENSE1: 16
+    LR: 0.000001
+    DROPOUT: 0.5
+    L2_LAMBDA: 0.001
+    OPTIMIZER: 'adam'
+  INCEPTIONRESNETV2:
+    NODES_DENSE0: 64
     NODES_DENSE1: 16
     LR: 0.0001
     DROPOUT: 0.5

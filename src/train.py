@@ -3,6 +3,7 @@ import os
 import yaml
 import dill
 import random
+from sklearn.model_selection import train_test_split
 import tensorflow.summary as tf_summary
 from math import ceil
 import tensorflow as tf
@@ -14,7 +15,9 @@ from tensorflow.keras.applications.resnet_v2 import preprocess_input as resnet_p
 from tensorflow.keras.applications.inception_v3 import preprocess_input as inceptionv3_preprocess
 from tensorflow.keras.applications.mobilenet_v2 import preprocess_input as mobilenetv2_preprocess
 from tensorflow.keras.applications.vgg16 import preprocess_input as vgg16_preprocess
+from tensorflow.keras.applications.inception_resnet_v2 import preprocess_input as inceptionresnetv2_preprocess
 from tensorboard.plugins.hparams import api as hp
+from src.data.build_dataset import *
 from src.models.models import *
 from src.visualization.visualize import *
 
@@ -72,11 +75,12 @@ def train_model(cfg, data, callbacks, verbose=1):
     elif cfg['TRAIN']['MODEL_DEF'] == 'vgg16':
         model_def = vgg16
         preprocessing_function = vgg16_preprocess
-    elif cfg['TRAIN']['MODEL_DEF'] == 'custom_vgg16':
-        model_def = custom_vgg16
-        preprocessing_function = vgg16_preprocess
     elif cfg['TRAIN']['MODEL_DEF'] == 'mobilenetv2':
         model_def = mobilenetv2
+        preprocessing_function = mobilenetv2_preprocess
+    elif cfg['TRAIN']['MODEL_DEF'] == 'inceptionresnetv2':
+        model_def = inceptionresnetv2
+        preprocessing_function = inceptionresnetv2_preprocess
     elif cfg['TRAIN']['MODEL_DEF'] == 'custom_resnet':
         model_def = custom_resnet
     else:
@@ -106,7 +110,7 @@ def train_model(cfg, data, callbacks, verbose=1):
     val_generator = val_img_gen.flow_from_dataframe(dataframe=data['VAL'], directory=cfg['PATHS']['RAW_DATA'],
         x_col="filename", y_col=y_col, target_size=img_shape, batch_size=cfg['TRAIN']['BATCH_SIZE'],
         class_mode=class_mode, validate_filenames=True)
-    test_generator = test_img_gen.flow_from_dataframe(dataframe=data['TEST'], directory=cfg['PATHS']['RAW_DATA'],
+    test_generator = test_img_gen.flow_from_dataframe(dataframe=data['TEST1'], directory=cfg['PATHS']['RAW_DATA'],
         x_col="filename", y_col=y_col, target_size=img_shape, batch_size=cfg['TRAIN']['BATCH_SIZE'],
         class_mode=class_mode, validate_filenames=True, shuffle=False)
 
@@ -145,7 +149,7 @@ def train_model(cfg, data, callbacks, verbose=1):
     # Open a strategy scope.
     with strategy.scope():
         model = model_def(cfg['NN'][cfg['TRAIN']['MODEL_DEF'].upper()], input_shape, metrics, n_classes,
-                          mixed_precision=cfg['TRAIN']['MIXED_PRECISION'], output_bias=None)
+                          mixed_precision=cfg['TRAIN']['MIXED_PRECISION'], output_bias=output_bias)
 
     # Train the model.
     steps_per_epoch = ceil(train_generator.n / train_generator.batch_size)
@@ -352,11 +356,21 @@ def train_experiment(cfg=None, experiment='single_train', save_weights=True, wri
 
     # Load dataset file paths and labels
     data = {}
-    data['TRAIN'] = pd.read_csv(cfg['PATHS']['TRAIN_SET'])
-    data['VAL'] = pd.read_csv(cfg['PATHS']['VAL_SET'])
-    data['TEST'] = pd.read_csv(cfg['PATHS']['TEST_SET'])
+    encounter_df_trainval = pd.read_csv(cfg['PATHS']['ENCOUNTERS_TRAINVAL'])
+    data['TEST1'] = pd.read_csv(cfg['PATHS']['TEST1_SET'])
 
-    # Set callbacks.
+    # Partition a random validation set from the training set for this run
+    test1_split = cfg['DATA']['TEST1_SPLIT']
+    test2_split = cfg['DATA']['TEST2_SPLIT']
+    val_split = cfg['DATA']['VAL_SPLIT']
+    relative_val_split = val_split / (1 - (test1_split + test2_split))
+    print(val_split, relative_val_split)
+    train_encounter_df, val_encounter_df = train_test_split(encounter_df_trainval, test_size=relative_val_split,
+                                                            stratify=encounter_df_trainval['label'])
+    data['TRAIN'] = build_file_dataframe(cfg, train_encounter_df, img_overwrite=False)
+    data['VAL'] = build_file_dataframe(cfg, val_encounter_df, img_overwrite=False)
+
+    # Set training callbacks.
     callbacks = define_callbacks(cfg)
 
     # Conduct the desired train experiment

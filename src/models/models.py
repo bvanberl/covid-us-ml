@@ -9,12 +9,11 @@ from tensorflow.keras.applications.resnet_v2 import ResNet50V2, ResNet101V2
 from tensorflow.keras.applications.vgg16 import VGG16
 from tensorflow.keras.applications.inception_v3 import InceptionV3
 from tensorflow.keras.applications.mobilenet_v2 import MobileNetV2
-import yaml
-import os
+from tensorflow.keras.applications.inception_resnet_v2 import InceptionResNetV2
 
 def resnet50v2(model_config, input_shape, metrics, n_classes, mixed_precision=False, output_bias=None):
     '''
-    Defines a model based on a pretrained ResNet50V2 for multiclass X-ray classification.
+    Defines a model based on a pretrained ResNet50V2 for multiclass US classification.
     :param model_config: A dictionary of parameters associated with the model architecture
     :param input_shape: The shape of the model input
     :param metrics: Metrics to track model's performance
@@ -66,7 +65,7 @@ def resnet50v2(model_config, input_shape, metrics, n_classes, mixed_precision=Fa
 
 def resnet101v2(model_config, input_shape, metrics, n_classes, mixed_precision=False, output_bias=None):
     '''
-    Defines a model based on a pretrained ResNet50V2 for multiclass X-ray classification.
+    Defines a model based on a pretrained ResNet50V2 for multiclass US classification.
     :param model_config: A dictionary of parameters associated with the model architecture
     :param input_shape: The shape of the model input
     :param metrics: Metrics to track model's performance
@@ -203,15 +202,17 @@ def mobilenetv2(model_config, input_shape, metrics, n_classes, mixed_precision=F
     # Start with pretrained MobileNetV2
     X_input = Input(input_shape, name='input')
     base_model = MobileNetV2(include_top=False, weights='imagenet', input_shape=input_shape, input_tensor=X_input)
-    
-    for layer in base_model.layers:
-        if 'Conv_1' in layer.name:
-            layer.trainable = True
-            if 'Conv_1' == layer.name:
-                setattr(layer, 'activity_regularizer', l2(l2_lambda))
-            print("Trainable layer", layer.name)
+    '''
+    for layer in base_model.layers[:-20]:
+        layer.trainable = False
+    for layer in base_model.layers[-20:]:
+        layer.trainable = True
+        if 'keras.layers.Conv2D' in layer._keras_api_names:
+            setattr(layer, 'activity_regularizer', l2(l2_lambda * 1e-2))
+            print("Trainable layer with regularization added", layer.name)
         else:
             layer.trainable = False
+    '''
     X = base_model.output
 
     # Add custom top layers
@@ -219,11 +220,11 @@ def mobilenetv2(model_config, input_shape, metrics, n_classes, mixed_precision=F
     X = Dropout(dropout)(X)
     X = Dense(nodes_dense0, activation='relu', activity_regularizer=l2(l2_lambda))(X)
     #X = LeakyReLU()(X)
-    X = BatchNormalization()(X)
+    #X = BatchNormalization()(X)
     #X = Dropout(dropout)(X)
     #X = Dense(nodes_dense1, activity_regularizer=l2(l2_lambda))(X)
     #X = LeakyReLU()(X)
-    X = Dropout(dropout)(X)
+    #X = Dropout(dropout)(X)
     X = Dense(n_classes, bias_initializer=output_bias)(X)
     Y = Activation('softmax', dtype='float32', name='output')(X)
 
@@ -236,7 +237,7 @@ def mobilenetv2(model_config, input_shape, metrics, n_classes, mixed_precision=F
 
 def vgg16(model_config, input_shape, metrics, n_classes, mixed_precision=False, output_bias=None):
     '''
-    Defines a model based on a pretrained ResNet50V2 for multiclass X-ray classification.
+    Defines a model based on a pretrained ResNet50V2 for multiclass US classification.
     :param model_config: A dictionary of parameters associated with the model architecture
     :param input_shape: The shape of the model input
     :param metrics: Metrics to track model's performance
@@ -294,96 +295,53 @@ def vgg16(model_config, input_shape, metrics, n_classes, mixed_precision=False, 
     model.summary()
     model.compile(loss='categorical_crossentropy', optimizer=optimizer, metrics=metrics)
     return model
+    
 
-def conv_block(units, dropout=0.2, activation='relu', block=1, layer=1):
-
-    def layer_wrapper(inp):
-        x = Conv2D(units, (3, 3), padding='same', name='block{}_conv{}'.format(block, layer))(inp)
-        x = BatchNormalization(name='block{}_bn{}'.format(block, layer))(x)
-        #x = Activation(activation, name='block{}_act{}'.format(block, layer))(x)
-        x = LeakyReLU()(x)
-        return x
-
-    return layer_wrapper
-        
-
-def custom_vgg16(model_config, input_shape, metrics, n_classes, mixed_precision = False, output_bias = None, activation='relu'):
-    """Instantiates the VGG16 architecture with Batch Normalization
-    :param input_tensor: Keras tensor (i.e. output of `layers.Input()`) to use as image input for the model.
-    :param input_shape: shape tuple
-    :param classes: optional number of classes to classify images
-    :returnL: a VGG16 Keras model with BN & dropout
-    """
+def inceptionresnetv2(model_config, input_shape, metrics, n_classes, mixed_precision=False, output_bias=None):
+    '''
+    Defines a model based on a pretrained InceptionResNetV2 for multiclass US classification.
+    :param model_config: A dictionary of parameters associated with the model architecture
+    :param input_shape: The shape of the model input
+    :param metrics: Metrics to track model's performance
+    :param n_classes: # of classes in data
+    :param mixed_precision: Whether to use mixed precision (use if you have GPU with compute capacity >= 7.0)
+    :param output_bias: bias initializer of output layer
+    :return: a Keras Model object with the architecture defined in this method
+    '''
 
     # Set hyperparameters
     nodes_dense0 = model_config['NODES_DENSE0']
+    nodes_dense1 = model_config['NODES_DENSE1']
     lr = model_config['LR']
     dropout = model_config['DROPOUT']
     l2_lambda = model_config['L2_LAMBDA']
     optimizer = Adam(learning_rate=lr)
-    frozen_layers = model_config['FROZEN_LAYERS']
     print("MODEL CONFIG: ", model_config)
-    
     if mixed_precision:
         tf.train.experimental.enable_mixed_precision_graph_rewrite(optimizer)
 
     if output_bias is not None:
         output_bias = Constant(output_bias)     # Set initial output bias
 
+    # Start with pretrained ResNet50V2
     X_input = Input(input_shape, name='input')
-
-    # Block 1
-    X = conv_block(32, dropout=dropout, activation=activation, block=1, layer=1)(X_input)
-    X = conv_block(32, dropout=dropout, activation=activation, block=1, layer=2)(X)
-    X = MaxPool2D((2, 2), strides=(2, 2), name='block1_pool')(X)
-
-    # Block 2
-    X = conv_block(64, dropout=dropout, activation=activation, block=2, layer=1)(X)
-    X = conv_block(64, dropout=dropout, activation=activation, block=2, layer=2)(X)
-    X = MaxPool2D((2, 2), strides=(2, 2), name='block2_pool')(X)
-
-    # Block 3
-    X = conv_block(128, dropout=dropout, activation=activation, block=3, layer=1)(X)
-    X = conv_block(128, dropout=dropout, activation=activation, block=3, layer=2)(X)
-    X = conv_block(128, dropout=dropout, activation=activation, block=3, layer=3)(X)
-    X = MaxPool2D((2, 2), strides=(2, 2), name='block3_pool')(X)
-
-    # Block 4
-    X = conv_block(256, dropout=dropout, activation=activation, block=4, layer=1)(X)
-    X = conv_block(256, dropout=dropout, activation=activation, block=4, layer=2)(X)
-    X = conv_block(256, dropout=dropout, activation=activation, block=4, layer=3)(X)
-    X = MaxPool2D((2, 2), strides=(2, 2), name='block4_pool')(X)
-
-    # Block 5
-    X = conv_block(256, dropout=dropout, activation=activation, block=5, layer=1)(X)
-    X = conv_block(256, dropout=dropout, activation=activation, block=5, layer=2)(X)
-    X = conv_block(256, dropout=dropout, activation=activation, block=5, layer=3)(X)
-    X = MaxPool2D((2, 2), strides=(2, 2), name='block5_pool')(X)
+    base_model = InceptionResNetV2(include_top=False, weights='imagenet', input_shape=input_shape, input_tensor=X_input)
+    X = base_model.output
 
     # Add custom top layers
     X = GlobalAveragePooling2D()(X)
     X = Dropout(dropout)(X)
     X = Dense(nodes_dense0, kernel_initializer='he_uniform', activation='relu', activity_regularizer=l2(l2_lambda))(X)
-    X = Dropout(dropout)(X)
+    X = BatchNormalization()(X)
     X = Dense(n_classes, bias_initializer=output_bias)(X)
     Y = Activation('softmax', dtype='float32', name='output')(X)
 
     # Set model loss function, optimizer, metrics.
     model = Model(inputs=X_input, outputs=Y)
-
-    # Add regularization to VGG16 conv layers
-    '''
-    for layer in model.layers:
-        idx = 0
-        if 'conv' in layer.name:
-            setattr(layer, 'activity_regulizer', l2(l2_lambda))
-            print('Adding regularization to: ' + str(base_model.layers[layers]))
-        idx += 1
-    '''
-
     model.summary()
     model.compile(loss='categorical_crossentropy', optimizer=optimizer, metrics=metrics)
     return model
+  
 
 def convolutional_block(X, kernel_size, filters, stage, block, s=2):
     '''
@@ -547,7 +505,10 @@ def custom_ffcnn(model_config, input_shape, metrics, n_classes, mixed_precision=
     lr = model_config['LR']
     dropout = model_config['DROPOUT']
     l2_lambda = model_config['L2_LAMBDA']
-    optimizer = Adam(learning_rate=lr)
+    if model_config['OPTIMIZER'] == 'sgd':
+        optimizer = SGD(learning_rate=lr, momentum=0.9)
+    else:
+        optimizer = Adam(learning_rate=lr)
     init_filters = model_config['INIT_FILTERS']
     filter_exp_base = model_config['FILTER_EXP_BASE']
     n_blocks = model_config['BLOCKS']
