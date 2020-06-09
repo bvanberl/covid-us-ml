@@ -286,7 +286,6 @@ def vgg16(model_config, input_shape, metrics, n_classes, mixed_precision=False, 
     X = Dropout(dropout)(X)
     X = Dense(nodes_dense0, kernel_initializer='he_uniform', activation='relu', activity_regularizer=l2(l2_lambda))(X)
     X = Dropout(dropout)(X)
-    #X = Dense(nodes_dense1, kernel_initializer='he_uniform', activation='relu', activity_regularizer=l2(l2_lambda))(X)
     X = Dense(n_classes, bias_initializer=output_bias)(X)
     Y = Activation('softmax', dtype='float32', name='output')(X)
 
@@ -592,14 +591,3 @@ def custom_ffcnn(model_config, input_shape, metrics, n_classes, mixed_precision=
     model.summary()
     model.compile(loss='categorical_crossentropy', optimizer=optimizer, metrics=metrics)
     return model
-
-'''
-For figuring out VGG16 architecture & how to manipulate freezing desired blocks
-
-cfg = yaml.full_load(open(os.getcwd() + "/config.yml", 'r'))
-model_config = cfg['NN']['VGG16']
-input_shape= cfg['DATA']['IMG_DIM']
-metrics = cfg['TRAIN']['METRIC_PREFERENCE']
-
-vgg16(model_config = model_config, input_shape = [244,244,3], metrics = metrics, n_classes = 3, output_bias=None)
-'''
