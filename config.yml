@@ -11,7 +11,7 @@ PATHS:
   ENCOUNTERS_TEST1: 'data/preprocessed/encounters_test1.csv'
   ENCOUNTERS_TEST2: 'data/preprocessed/encounters_test2.csv'
   GEN_IMAGES: 'documents/generated_images/'
-  LOGS: 'results/logs/'
+  LOGS: 'results\\logs\\'
   IMAGES: 'documents/generated_images/'
   MODEL_WEIGHTS: 'results/models/'
   MODEL_TO_LOAD: 'results/models/model.h5'
@@ -27,7 +27,7 @@ DATA:
   CLASSES: ['COVID', 'NCOVID', 'SMOOTH']          # Classes for multiclass classification
 
 TRAIN:
-  MODEL_DEF: 'mobilenetv2'                                # One of {'resnet50v2', 'resnet101v2', 'inceptionv3', 'vgg16', 'mobilenetv2', 'inceptionresnetv2', 'custom_resnet', 'custom_ffcnn'}
+  MODEL_DEF: 'vgg16'                                # One of {'resnet50v2', 'resnet101v2', 'inceptionv3', 'vgg16', 'mobilenetv2', 'inceptionresnetv2', 'custom_resnet', 'custom_ffcnn'}
   #CLASS_MULTIPLIER: [1.0, 1.0]                         # Class multiplier for binary classification
   CLASS_MULTIPLIER: [1.0, 1.0, 1.0]                       # Class multiplier for multiclass classification
   EXPERIMENT_TYPE: 'single_train'                           # One of {'single_train', 'multi_train', 'hparam_search'}
@@ -36,7 +36,7 @@ TRAIN:
   PATIENCE: 5
   METRIC_PREFERENCE: ['auc', 'recall', 'precision', 'loss']
   NUM_RUNS: 10
-  NUM_GPUS: 5
+  NUM_GPUS: 1
   MIXED_PRECISION: true                         # Necessary for training with Tensor Cores
 
 NN:
@@ -61,11 +61,12 @@ NN:
     L2_LAMBDA: 0.001
     OPTIMIZER: 'adam'
   VGG16:
-    NODES_DENSE0: 512
+    NODES_DENSE0: 128
     NODES_DENSE1: 32
-    LR: 0.000003
-    DROPOUT: 0.5
+    LR: 0.000001
+    DROPOUT: 0.6
     L2_LAMBDA: 0.01
+    FROZEN_LAYERS: [1,2]                   #layers to freeze in base model to freeze {1,2,4,5,7,8,9,11,12,13,15,16,17}
   MOBILENETV2:
     NODES_DENSE0: 128
     NODES_DENSE1: 16
@@ -91,7 +92,7 @@ NN:
     NODES_DENSE1: 32
     LR: 0.00001
     OPTIMIZER: 'adam'
-    DROPOUT: 0.5
+    DROPOUT: 0.3
     L2_LAMBDA: 0.001
   CUSTOM_FFCNN:
     KERNEL_SIZE: (3,3)

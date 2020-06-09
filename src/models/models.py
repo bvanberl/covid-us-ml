@@ -11,7 +11,6 @@ from tensorflow.keras.applications.inception_v3 import InceptionV3
 from tensorflow.keras.applications.mobilenet_v2 import MobileNetV2
 from tensorflow.keras.applications.inception_resnet_v2 import InceptionResNetV2
 
-
 def resnet50v2(model_config, input_shape, metrics, n_classes, mixed_precision=False, output_bias=None):
     '''
     Defines a model based on a pretrained ResNet50V2 for multiclass US classification.
@@ -255,6 +254,7 @@ def vgg16(model_config, input_shape, metrics, n_classes, mixed_precision=False, 
     dropout = model_config['DROPOUT']
     l2_lambda = model_config['L2_LAMBDA']
     optimizer = Adam(learning_rate=lr)
+    frozen_layers = model_config['FROZEN_LAYERS']
     print("MODEL CONFIG: ", model_config)
     if mixed_precision:
         tf.train.experimental.enable_mixed_precision_graph_rewrite(optimizer)
@@ -262,9 +262,24 @@ def vgg16(model_config, input_shape, metrics, n_classes, mixed_precision=False, 
     if output_bias is not None:
         output_bias = Constant(output_bias)     # Set initial output bias
 
-    # Start with pretrained ResNet50V2
+    # Start with pretrained VGG16
     X_input = Input(input_shape, name='input')
     base_model = VGG16(include_top=False, weights='imagenet', input_shape=input_shape, input_tensor=X_input)
+    
+    # Freeze desired conv layers set in config.yml
+    for layers in range(len(frozen_layers)):
+        layer2freeze = frozen_layers[layers]
+        print('Freezing layer: ' + str(layer2freeze))
+        base_model.layers[layer2freeze].trainable = False
+
+    # Add regularization to VGG16 conv layers
+    for layer in base_model.layers:
+        idx = 0
+        if base_model.layers[0].trainable and 'conv' in layer.name:
+            setattr(layer, 'activity_regulizer', l2(l2_lambda))
+            print('Adding regularization to: ' + str(base_model.layers[layers]))
+        idx += 1
+    
     X = base_model.output
 
     # Add custom top layers
@@ -272,7 +287,6 @@ def vgg16(model_config, input_shape, metrics, n_classes, mixed_precision=False, 
     X = Dropout(dropout)(X)
     X = Dense(nodes_dense0, kernel_initializer='he_uniform', activation='relu', activity_regularizer=l2(l2_lambda))(X)
     X = Dropout(dropout)(X)
-    X = Dense(nodes_dense1, kernel_initializer='he_uniform', activation='relu', activity_regularizer=l2(l2_lambda))(X)
     X = Dense(n_classes, bias_initializer=output_bias)(X)
     Y = Activation('softmax', dtype='float32', name='output')(X)
 
@@ -327,7 +341,7 @@ def inceptionresnetv2(model_config, input_shape, metrics, n_classes, mixed_preci
     model.summary()
     model.compile(loss='categorical_crossentropy', optimizer=optimizer, metrics=metrics)
     return model
-
+  
 
 def convolutional_block(X, kernel_size, filters, stage, block, s=2):
     '''

@@ -14,6 +14,7 @@ from tensorflow.keras.preprocessing.image import ImageDataGenerator
 from tensorflow.keras.applications.resnet_v2 import preprocess_input as resnet_preprocess
 from tensorflow.keras.applications.inception_v3 import preprocess_input as inceptionv3_preprocess
 from tensorflow.keras.applications.mobilenet_v2 import preprocess_input as mobilenetv2_preprocess
+from tensorflow.keras.applications.vgg16 import preprocess_input as vgg16_preprocess
 from tensorflow.keras.applications.inception_resnet_v2 import preprocess_input as inceptionresnetv2_preprocess
 from tensorboard.plugins.hparams import api as hp
 from src.data.build_dataset import *
@@ -87,15 +88,15 @@ def train_model(cfg, data, callbacks, verbose=1):
 
     # Create ImageDataGenerators. For training data: randomly zoom, stretch, horizontally flip image as data augmentation.
     if cfg['TRAIN']['MODEL_DEF'] in ['custom_resnet', 'custom_ffcnn']:
-        train_img_gen = ImageDataGenerator(zoom_range=0.05, horizontal_flip=True, width_shift_range=0.05,
-                                           height_shift_range=0.05, shear_range=5, rotation_range=10,
+        train_img_gen = ImageDataGenerator(zoom_range=0.10, horizontal_flip=True, width_shift_range=0.2,
+                                           height_shift_range=0.2, shear_range=20, rotation_range=50,
                                            samplewise_center=True, samplewise_std_normalization=True)
         val_img_gen = ImageDataGenerator(samplewise_center=True, samplewise_std_normalization=True)
         test_img_gen = ImageDataGenerator(samplewise_center=True, samplewise_std_normalization=True)
     else:
-        train_img_gen = ImageDataGenerator(zoom_range=0.05, horizontal_flip=True, width_shift_range=0.1,
-                                           height_shift_range=0.1, shear_range=10, rotation_range=15,
-                                           preprocessing_function=preprocessing_function)
+        train_img_gen = ImageDataGenerator(zoom_range=0.10, horizontal_flip=True, width_shift_range=0.2,
+                                           height_shift_range=0.2, shear_range=20, rotation_range=50,
+                                           brightness_range=[0.7,1.3],preprocessing_function=preprocessing_function)
         val_img_gen = ImageDataGenerator(preprocessing_function=preprocessing_function)
         test_img_gen = ImageDataGenerator(preprocessing_function=preprocessing_function)
 
@@ -349,9 +350,9 @@ def train_experiment(cfg=None, experiment='single_train', save_weights=True, wri
 
     # Set logs directory
     cur_date = datetime.datetime.now().strftime('%Y%m%d-%H%M%S')
-    log_dir = cfg['PATHS']['LOGS'] + "training/" + cur_date if write_logs else None
-    if not os.path.exists(cfg['PATHS']['LOGS'] + "training/"):
-        os.makedirs(cfg['PATHS']['LOGS'] + "training/")
+    log_dir = cfg['PATHS']['LOGS'] + "training\\" + cur_date if write_logs else None
+    if not os.path.exists(cfg['PATHS']['LOGS'] + "training\\"):
+        os.makedirs(cfg['PATHS']['LOGS'] + "training\\")
 
     # Load dataset file paths and labels
     data = {}
