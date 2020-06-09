@@ -5,11 +5,11 @@ PATHS:
   SMOOTH_DATA: '/home/ampc/raw/SMOOTH/'      # Path to SMOOTH raw data
   PROCESSED_DATA: 'data/preprocessed/'
   TRAIN_SET: 'data/preprocessed/train_set.csv'
-  VAL_SET: 'data/preprocessed/val_set.csv'
-  TEST_SET: 'data/preprocessed/test_set.csv'
-  TRAIN_ENCOUNTERS: 'data/preprocessed/train_encounters.csv'
-  VAL_ENCOUNTERS: 'data/preprocessed/val_encounters.csv'
-  TEST_ENCOUNTERS: 'data/preprocessed/test_encounters.csv'
+  TEST1_SET: 'data/preprocessed/test1_set.csv'
+  TEST2_SET: 'data/preprocessed/test2_set.csv'
+  ENCOUNTERS_TRAINVAL: 'data/preprocessed/encounters_trainval.csv'
+  ENCOUNTERS_TEST1: 'data/preprocessed/encounters_test1.csv'
+  ENCOUNTERS_TEST2: 'data/preprocessed/encounters_test2.csv'
   GEN_IMAGES: 'documents/generated_images/'
   LOGS: 'results/logs/'
   IMAGES: 'documents/generated_images/'
@@ -21,7 +21,8 @@ PATHS:
 DATA:
   IMG_DIM: [224, 224]
   VAL_SPLIT: 0.08
-  TEST_SPLIT: 0.1
+  TEST1_SPLIT: 0.08
+  TEST2_SPLIT: 0.08
   #CLASSES: ['THICK', 'SMOOTH']                   # Classes for binary classification
   CLASSES: ['COVID', 'NCOVID', 'SMOOTH']          # Classes for multiclass classification
 
@@ -30,7 +31,7 @@ TRAIN:
   #CLASS_MULTIPLIER: [1.0, 1.0]                         # Class multiplier for binary classification
   CLASS_MULTIPLIER: [1.5, 1.5, 1.0]                       # Class multiplier for multiclass classification
   EXPERIMENT_TYPE: 'single_train'                           # One of {'single_train', 'multi_train', 'hparam_search'}
-  BATCH_SIZE: 480
+  BATCH_SIZE: 30
   EPOCHS: 300
   PATIENCE: 5
   METRIC_PREFERENCE: ['auc', 'recall', 'precision', 'loss']
