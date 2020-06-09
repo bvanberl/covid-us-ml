@@ -1,5 +1,6 @@
 import pandas as pd
 import os
+import sys
 import yaml
 import dill
 import random
@@ -350,9 +351,11 @@ def train_experiment(cfg=None, experiment='single_train', save_weights=True, wri
 
     # Set logs directory
     cur_date = datetime.datetime.now().strftime('%Y%m%d-%H%M%S')
-    log_dir = cfg['PATHS']['LOGS'] + "training\\" + cur_date if write_logs else None
-    if not os.path.exists(cfg['PATHS']['LOGS'] + "training\\"):
-        os.makedirs(cfg['PATHS']['LOGS'] + "training\\")
+    log_dir = cfg['PATHS']['LOGS'] + "training/" + cur_date if write_logs else None
+    if not os.path.exists(cfg['PATHS']['LOGS'] + "training/"):
+        os.makedirs(cfg['PATHS']['LOGS'] + "training/")
+    if sys.platform.startswith('win'):
+        log_dir = log_dir.replace('/', '\\')    # On Windows, path separators must be '\\' to work with TensorBoard
 
     # Load dataset file paths and labels
     data = {}

@@ -186,13 +186,14 @@ def build_dataset(cfg=None, img_overwrite=False):
     encounter_df = build_encounter_dataframe(cfg)
 
     # Randomly split encounters dataframe into train, val and test sets
-    print("Partitioning training, validation and test sets.")
+    print("Partitioning training and test sets.")
     test1_split = cfg['DATA']['TEST1_SPLIT']
     test2_split = cfg['DATA']['TEST2_SPLIT']
-    encounter_df, encounter_df_test2 = train_test_split(encounter_df, test_size=test2_split, stratify=encounter_df['label'])
+    encounter_df, encounter_df_test2 = train_test_split(encounter_df, test_size=test2_split,
+                                                        random_state=42, stratify=encounter_df['label'])
     relative_test1_split = test1_split / (1 - test2_split)  # Calculate fraction of train_df to be used for validation
     encounter_df_trainval, encounter_df_test1 = train_test_split(encounter_df, test_size=relative_test1_split,
-                                                      stratify=encounter_df['label'])
+                                                                 random_state=42, stratify=encounter_df['label'])
 
     # Build Pandas dataframe to link all image file names and labels.
     print("Building image dataset")

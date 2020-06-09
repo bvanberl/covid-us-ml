@@ -11,7 +11,7 @@ PATHS:
   ENCOUNTERS_TEST1: 'data/preprocessed/encounters_test1.csv'
   ENCOUNTERS_TEST2: 'data/preprocessed/encounters_test2.csv'
   GEN_IMAGES: 'documents/generated_images/'
-  LOGS: 'results\\logs\\'
+  LOGS: 'results/logs/'
   IMAGES: 'documents/generated_images/'
   MODEL_WEIGHTS: 'results/models/'
   MODEL_TO_LOAD: 'results/models/model.h5'
