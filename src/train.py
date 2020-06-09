@@ -14,6 +14,7 @@ from tensorflow.keras.preprocessing.image import ImageDataGenerator
 from tensorflow.keras.applications.resnet_v2 import preprocess_input as resnet_preprocess
 from tensorflow.keras.applications.inception_v3 import preprocess_input as inceptionv3_preprocess
 from tensorflow.keras.applications.mobilenet_v2 import preprocess_input as mobilenetv2_preprocess
+from tensorflow.keras.applications.inception_resnet_v2 import preprocess_input as inceptionresnetv2_preprocess
 from tensorboard.plugins.hparams import api as hp
 from src.data.build_dataset import *
 from src.models.models import *
@@ -75,6 +76,10 @@ def train_model(cfg, data, callbacks, verbose=1):
         preprocessing_function = vgg16_preprocess
     elif cfg['TRAIN']['MODEL_DEF'] == 'mobilenetv2':
         model_def = mobilenetv2
+        preprocessing_function = mobilenetv2_preprocess
+    elif cfg['TRAIN']['MODEL_DEF'] == 'inceptionresnetv2':
+        model_def = inceptionresnetv2
+        preprocessing_function = inceptionresnetv2_preprocess
     elif cfg['TRAIN']['MODEL_DEF'] == 'custom_resnet':
         model_def = custom_resnet
     else:
@@ -82,14 +87,14 @@ def train_model(cfg, data, callbacks, verbose=1):
 
     # Create ImageDataGenerators. For training data: randomly zoom, stretch, horizontally flip image as data augmentation.
     if cfg['TRAIN']['MODEL_DEF'] in ['custom_resnet', 'custom_ffcnn']:
-        train_img_gen = ImageDataGenerator(zoom_range=0.10, horizontal_flip=True, vertical_flip=True, width_shift_range=0.2,
-                                           height_shift_range=0.2, shear_range=20, rotation_range=50,
+        train_img_gen = ImageDataGenerator(zoom_range=0.05, horizontal_flip=True, width_shift_range=0.05,
+                                           height_shift_range=0.05, shear_range=5, rotation_range=10,
                                            samplewise_center=True, samplewise_std_normalization=True)
         val_img_gen = ImageDataGenerator(samplewise_center=True, samplewise_std_normalization=True)
         test_img_gen = ImageDataGenerator(samplewise_center=True, samplewise_std_normalization=True)
     else:
-        train_img_gen = ImageDataGenerator(zoom_range=0.10, horizontal_flip=True, vertical_flip=True, width_shift_range=0.2,
-                                           height_shift_range=0.2, shear_range=20, rotation_range=50,
+        train_img_gen = ImageDataGenerator(zoom_range=0.05, horizontal_flip=True, width_shift_range=0.1,
+                                           height_shift_range=0.1, shear_range=10, rotation_range=15,
                                            preprocessing_function=preprocessing_function)
         val_img_gen = ImageDataGenerator(preprocessing_function=preprocessing_function)
         test_img_gen = ImageDataGenerator(preprocessing_function=preprocessing_function)
@@ -143,7 +148,7 @@ def train_model(cfg, data, callbacks, verbose=1):
     # Open a strategy scope.
     with strategy.scope():
         model = model_def(cfg['NN'][cfg['TRAIN']['MODEL_DEF'].upper()], input_shape, metrics, n_classes,
-                          mixed_precision=cfg['TRAIN']['MIXED_PRECISION'], output_bias=None)
+                          mixed_precision=cfg['TRAIN']['MIXED_PRECISION'], output_bias=output_bias)
 
     # Train the model.
     steps_per_epoch = ceil(train_generator.n / train_generator.batch_size)
