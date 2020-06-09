@@ -15,8 +15,9 @@ from tensorflow.keras.applications.inception_v3 import preprocess_input as incep
 from tensorflow.keras.applications.mobilenet_v2 import preprocess_input as mobilenetv2_preprocess
 from tensorflow.keras.applications.inception_resnet_v2 import preprocess_input as inceptionresnetv2_preprocess
 from tensorboard.plugins.hparams import api as hp
-from src.models.models import *
-from src.visualization.visualize import *
+# from src.models.models import *
+# from src.visualization.visualize import *
+from sklearn.model_selection import StratifiedKFold, train_test_split
 
 
 def get_class_weights(histogram, class_multiplier=None):
@@ -48,7 +49,6 @@ def define_callbacks(cfg):
                                   min_lr=1e-8, min_delta=0.0001)
     callbacks = [early_stopping, reduce_lr]
     return callbacks
-
 
 def train_model(cfg, data, callbacks, verbose=1):
     '''
@@ -328,12 +328,13 @@ def log_test_results(cfg, model, test_generator, test_metrics, log_dir):
     return
 
 
-def train_experiment(cfg=None, experiment='single_train', save_weights=True, write_logs=True):
+def train_experiment(cfg=None, experiment='single_train', save_weights=True, write_logs=True, fold_num=0):
     '''
     Defines and trains COVID US model according to selected experiment type. Prints and logs relevant metrics.
     :param experiment: The type of training experiment. Choices are currently {'single_train'}
     :param save_weights: A flag indicating whether to save the model weights
     :param write_logs: A flag indicating whether to write TensorBoard logs
+    :param fold_num: A integer indicating the crossfold value, if pertinent
     :return: A dictionary of metrics on the test set
     '''
 
@@ -376,11 +377,74 @@ def train_experiment(cfg=None, experiment='single_train', save_weights=True, wri
             if write_logs:
                 log_test_results(cfg, model, test_generator, test_metrics, log_dir)
         if save_weights:
-            model_path = cfg['PATHS']['MODEL_WEIGHTS'] + 'model' + cur_date + '.h5'
+            model_path = cfg['PATHS']['MODEL_WEIGHTS'] + 'model' + cur_date + '_f' + fold_num + '.h5'
             save_model(model, model_path)  # Save the model's weights
     return
 
+def crossfold(cfg):
+    '''
+    Implements a Stratified KFold cross-validation that splits sets by clip instead of frame.
+    :param cfg: configuration file for paths linking to the data and model settings
+    '''
+    test_split = cfg['DATA']['TEST_SPLIT']
+    n_splits = int(1 / test_split)
+    val_split = cfg['DATA']['VAL_SPLIT']
+    relative_val_split = val_split / (1 - test_split)  # Calculate fraction of train_df to be used for validation
+    kf = StratifiedKFold(n_splits=n_splits, shuffle=True)    
+    fold_num = 1
+    fold_max = cfg['DATA']['FOLD_MAX']
 
+    # Read dataframes
+    encounter_df = pd.read_csv(cfg['PATHS']['ENCOUNTERS'])
+    dataset_df = pd.read_csv(cfg['PATHS']['DATASET'])
+
+    # Implement stratified K-Fold
+    for train_split, test_split in kf.split(encounter_df, encounter_df['label']):
+        # Split into training, validation, and test sets.
+        encounter_df_train, encounter_df_test = encounter_df.loc[train_split], encounter_df.loc[test_split]
+        encounter_df_train, encounter_df_val = train_test_split(encounter_df_train, test_size=relative_val_split,
+                                                                stratify=encounter_df_train['label'])
+        
+        # Figure out which videos and which labels are in which set.
+        in_test = []
+        for index, row in encounter_df_test.iterrows():
+            in_test.append((row["Unnamed: 0"],row["label"]))
+        in_val = []
+        for index, row in encounter_df_val.iterrows():
+            in_val.append((row["Unnamed: 0"],row["label"]))
+        
+        train_rows = []
+        val_rows = []
+        test_rows = []
+
+        # Sort every frame into its corresponding dataset and save into a DataFrame.
+        for index, row in dataset_df.iterrows():
+            if (row["video"],row["label"]) in in_test:
+                test_rows.append(row.values)
+            elif (row["video"],row["label"]) in in_val:
+                val_rows.append(row.values)
+            else:
+                train_rows.append(row.values)
+        dataset_df_train = pd.DataFrame(train_rows, columns=dataset_df.columns)
+        dataset_df_val = pd.DataFrame(val_rows, columns=dataset_df.columns)
+        dataset_df_test = pd.DataFrame(test_rows, columns=dataset_df.columns)
+
+        # Drop columns that are unnecessary and save into csv.
+        dataset_df_train.drop(columns=['Unnamed: 0','video']).to_csv(cfg['PATHS']['TRAIN_SET'])
+        dataset_df_val.drop(columns=['Unnamed: 0','video']).to_csv(cfg['PATHS']['VAL_SET'])
+        dataset_df_test.drop(columns=['Unnamed: 0','video']).to_csv(cfg['PATHS']['TEST_SET'])
+
+        # Run and train model.
+        print("Running model with fold number " + str(fold_num))
+        train_experiment(cfg=cfg, experiment=cfg['TRAIN']['EXPERIMENT_TYPE'], save_weights=True, write_logs=True, fold_num=fold_num)
+
+        # In case the number of divisions is greater than the models we want to run.
+        if fold_num == fold_max:
+            break
+        else:
+            fold_num += 1
+       
 if __name__ == '__main__':
     cfg = yaml.full_load(open(os.getcwd() + "/config.yml", 'r'))
     train_experiment(cfg=cfg, experiment=cfg['TRAIN']['EXPERIMENT_TYPE'], save_weights=True, write_logs=True)
+    # crossfold(cfg=cfg)

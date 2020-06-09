@@ -1,0 +1,77 @@
+PATHS:
+  RAW_DATA: 'C:/Users/Jabb3/Documents/Data/covid-us-ml/'                      # Path to folder containing all raw data
+  COVID_DATA: 'C:/Users/Jabb3/Documents/Data/covid-us-ml/COVID clips/'        # Path to COVID raw data
+  NCOVID_DATA: 'C:/Users/Jabb3/Documents/Data/covid-us-ml/NCOVID clips/'      # Path to NCOVID raw data
+  SMOOTH_DATA: 'C:/Users/Jabb3/Documents/Data/covid-us-ml/SMOOTH clips/'      # Path to SMOOTH raw data
+  PROCESSED_DATA: 'data/preprocessed/'
+  TRAIN_SET: 'data/preprocessed/train_set.csv'
+  VAL_SET: 'data/preprocessed/val_set.csv'
+  TEST_SET: 'data/preprocessed/test_set.csv'
+  TRAIN_ENCOUNTERS: 'data/preprocessed/train_encounters.csv'
+  VAL_ENCOUNTERS: 'data/preprocessed/val_encounters.csv'
+  TEST_ENCOUNTERS: 'data/preprocessed/test_encounters.csv'
+  ENCOUNTERS: 'data/preprocessed/encounters.csv'
+  DATASET: 'data/preprocessed/dataset.csv'
+  GEN_IMAGES: 'documents/generated_images/'
+  LOGS: 'results//logs//'
+  IMAGES: 'documents/generated_images/'
+  MODEL_WEIGHTS: 'results/models/'
+  MODEL_TO_LOAD: 'results/models/model.h5'
+  OUTPUT_CLASS_INDICES: './data/serializations/output_class_indices.pkl'
+  BATCH_PREDS: 'results/predictions/'
+
+DATA:
+  IMG_DIM: [224, 224]
+  VAL_SPLIT: 0.08
+  TEST_SPLIT: 0.1
+  FOLD_MAX: 5
+  CLASSES: ['COVID', 'NCOVID', 'SMOOTH']                   # Classes for binary classification
+
+TRAIN:
+  MODEL_DEF: 'custom_resnet'                                # One of {'resnet50v2', 'custom_resnet'}
+  CLASS_MULTIPLIER: [1.0, 1.0, 1.0]                         # Class multiplier for classes
+  EXPERIMENT_TYPE: 'single_train'                           # One of {'single_train', 'multi_train', 'hparam_search'}
+  BATCH_SIZE: 64
+  EPOCHS: 300
+  PATIENCE: 7
+  METRIC_PREFERENCE: ['auc', 'recall', 'precision', 'loss']
+  NUM_RUNS: 10
+
+NN:
+  RESNET50V2:
+    NODES_DENSE0: 512
+    NODES_DENSE1: 32
+    LR: 0.00001
+    DROPOUT: 0.45
+    L2_LAMBDA: 0.001
+  CUSTOM_RESNET:
+    KERNEL_SIZE: (3,3)
+    STRIDES: (2,2)
+    INIT_FILTERS: 16
+    FILTER_EXP_BASE: 2
+    MAXPOOL_SIZE: (2,2)
+    RES_BLOCKS: 5
+    NODES_DENSE0: 256
+    NODES_DENSE1: 64
+    LR: 0.00005
+    OPTIMIZER: 'adam'
+    DROPOUT: 0.45
+    L2_LAMBDA: 0.00001
+
+HP_SEARCH:
+  METRICS: ['accuracy', 'loss', 'recall', 'precision', 'auc']
+  COMBINATIONS: 50
+  REPEATS: 2
+  RANGES:
+    KERNEL_SIZE: ['(3,3)', '(5,5)']     # Discrete range
+    MAXPOOL_SIZE: ['(2,2)', '(3,3)']    # Discrete range
+    INIT_FILTERS: [8, 16, 32]           # Discrete range
+    FILTER_EXP_BASE: [2, 3]             # Int range
+    NODES_DENSE0: [128, 256, 512, 1024] # Discrete range
+    NODES_DENSE1: [32, 64]              # Discrete range
+    RES_BLOCKS: [3, 8]                 # Int range
+    DROPOUT: [0.2, 0.4]                 # Real range
+    LR: [-5.0, -3.0]                    # Real range on log scale (10^x)
+    L2_LAMBDA: [-5.0, -4.0]             # Real range on log scale (10^x)
+    BATCH_SIZE: [32, 64]                # Discrete range
+

@@ -96,7 +96,7 @@ def build_encounter_dataframe(cfg):
 
     class_dict = {cfg['DATA']['CLASSES'][i]: i for i in range(len(cfg['DATA']['CLASSES']))}  # Map class name to number
 
-    # Label all encounters for COVID-19 class
+    # Label all encounters for COVID class
     covid_encounter_dirs = []
     for encounter_dir in os.listdir(covid_data_path):
         encounter_dir = os.path.join(covid_data_path, encounter_dir).replace("\\","/")
@@ -104,7 +104,7 @@ def build_encounter_dataframe(cfg):
             covid_encounter_dirs.append(encounter_dir)
     covid_encounter_df = pd.DataFrame({'encounter': covid_encounter_dirs, 'label': class_dict['COVID']})
 
-    # Label all encounters for COVID-19 class
+    # Label all encounters for NCOVID class
     ncovid_encounter_dirs = []
     for encounter_dir in os.listdir(ncovid_data_path):
         encounter_dir = os.path.join(ncovid_data_path, encounter_dir).replace("\\","/")
@@ -112,7 +112,7 @@ def build_encounter_dataframe(cfg):
             ncovid_encounter_dirs.append(encounter_dir)
     ncovid_encounter_df = pd.DataFrame({'encounter': ncovid_encounter_dirs, 'label': class_dict['NCOVID']})
 
-    # Label all encounters for COVID-19 class
+    # Label all encounters for SMOOTH class
     smooth_encounter_dirs = []
     for encounter_dir in os.listdir(smooth_data_path):
         encounter_dir = os.path.join(smooth_data_path, encounter_dir).replace("\\","/")
@@ -138,8 +138,11 @@ def build_file_dataframe(cfg, encounter_df, img_overwrite=False):
 
     # Iterate over all encounters and build a Pandas dataframe linking image file names and classes.
     filenames = []
+    videos = []
     labels = []
     counter = 0
+    vid_counter = 0
+    prev_label = 1
     for index, row in tqdm(encounter_df.iterrows()):
         if counter % 10 == 0:
             print(str(counter) + ' / ' + str(encounter_df.shape[0]) + ' encounters')    # Keep track of progress
@@ -164,13 +167,16 @@ def build_file_dataframe(cfg, encounter_df, img_overwrite=False):
             encounter_filenames = [f.replace(cfg['PATHS']['RAW_DATA'], '').replace("\\","/")
                                    for f in glob.glob(row['encounter'] + "/*.jpg")]
             filenames.extend(encounter_filenames)
+            if row['label'] != prev_label:
+                vid_counter = 0
+                prev_label = row['label']
+            videos.extend([vid_counter] * len(encounter_filenames))
+            vid_counter += 1
             labels.extend([row['label']] * len(encounter_filenames))
 
-    file_df = pd.DataFrame({'filename': filenames, 'label': labels})
+    file_df = pd.DataFrame({'filename': filenames,'video': videos, 'label': labels})
     file_df['label_str'] = file_df['label'].map(label_dict)             # Add column for string representation of label
     return file_df
-
-
 
 def build_dataset(cfg=None, img_overwrite=False):
     '''
@@ -187,34 +193,15 @@ def build_dataset(cfg=None, img_overwrite=False):
     print("Assigning labels to encounters.")
     encounter_df = build_encounter_dataframe(cfg)
 
-    # Randomly split encounters dataframe into train, val and test sets
-    print("Partitioning training, validation and test sets.")
-    val_split = cfg['DATA']['VAL_SPLIT']
-    test_split = cfg['DATA']['TEST_SPLIT']
-    encounter_df_train, encounter_df_test = train_test_split(encounter_df, test_size=test_split,
-                                                             stratify=encounter_df['label'])
-    relative_val_split = val_split / (1 - test_split)  # Calculate fraction of train_df to be used for validation
-    encounter_df_train, encounter_df_val = train_test_split(encounter_df_train, test_size=relative_val_split,
-                                                      stratify=encounter_df_train['label'])
-
-    # Build Pandas dataframes to link image file names and labels.
-    print("Building training set")
-    file_df_train = build_file_dataframe(cfg, encounter_df_train, img_overwrite=img_overwrite)
-    print("Building validation set")
-    file_df_val = build_file_dataframe(cfg, encounter_df_val, img_overwrite=img_overwrite)
-    print("Building test set")
-    file_df_test = build_file_dataframe(cfg, encounter_df_test, img_overwrite=img_overwrite)
-
-    # Save training, validation and test sets
+    # Save encounter data
     if not os.path.exists(cfg['PATHS']['PROCESSED_DATA']):
         os.makedirs(cfg['PATHS']['PROCESSED_DATA'])
-    file_df_train.to_csv(cfg['PATHS']['TRAIN_SET'])
-    file_df_val.to_csv(cfg['PATHS']['VAL_SET'])
-    file_df_test.to_csv(cfg['PATHS']['TEST_SET'])
-    encounter_df_train.to_csv(cfg['PATHS']['TRAIN_ENCOUNTERS'])
-    encounter_df_val.to_csv(cfg['PATHS']['VAL_ENCOUNTERS'])
-    encounter_df_test.to_csv(cfg['PATHS']['TEST_ENCOUNTERS'])
-    return
+    encounter_df.to_csv(cfg['PATHS']['ENCOUNTERS'])
+
+    # Build Pandas dataframes to link image file names and labels.
+    print("Processing videos")
+    file_df = build_file_dataframe(cfg, encounter_df, img_overwrite=img_overwrite)
+    file_df.to_csv(cfg['PATHS']['DATASET'])
 
 if __name__ == '__main__':
     build_dataset(img_overwrite=False)
