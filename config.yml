@@ -1,8 +1,8 @@
 PATHS:
-  RAW_DATA: '/home/ampc/raw/'                # Path to folder containing all raw data
-  COVID_DATA: '/home/ampc/raw/COVID/'        # Path to COVID raw data
-  NCOVID_DATA: '/home/ampc/raw/NCOVID/'      # Path to NCOVID raw data
-  SMOOTH_DATA: '/home/ampc/raw/SMOOTH/'      # Path to SMOOTH raw data
+  RAW_DATA: 'C:/Users/rober/Documents/Data/covid-us-ml/'                # Path to folder containing all raw data
+  COVID_DATA: 'C:/Users/rober/Documents/Data/covid-us-ml/COVID'        # Path to COVID raw data
+  NCOVID_DATA: 'C:/Users/rober/Documents/Data/covid-us-ml/NCOVID'      # Path to NCOVID raw data
+  SMOOTH_DATA: 'C:/Users/rober/Documents/Data/covid-us-ml/SMOOTH'      # Path to SMOOTH raw data
   PROCESSED_DATA: 'data/preprocessed/'
   TRAIN_SET: 'data/preprocessed/train_set.csv'
   TEST1_SET: 'data/preprocessed/test1_set.csv'
@@ -29,9 +29,9 @@ DATA:
 TRAIN:
   MODEL_DEF: 'vgg16'                                # One of {'resnet50v2', 'resnet101v2', 'inceptionv3', 'vgg16', 'mobilenetv2', 'inceptionresnetv2', 'custom_resnet', 'custom_ffcnn'}
   #CLASS_MULTIPLIER: [1.0, 1.0]                         # Class multiplier for binary classification
-  CLASS_MULTIPLIER: [1.0, 1.0, 1.0]                       # Class multiplier for multiclass classification
+  CLASS_MULTIPLIER: [2.0, 1.0, 1.0]                       # Class multiplier for multiclass classification
   EXPERIMENT_TYPE: 'single_train'                           # One of {'single_train', 'multi_train', 'hparam_search'}
-  BATCH_SIZE: 528
+  BATCH_SIZE: 16
   EPOCHS: 300
   PATIENCE: 5
   METRIC_PREFERENCE: ['auc', 'recall', 'precision', 'loss']
@@ -61,7 +61,7 @@ NN:
     L2_LAMBDA: 0.001
     OPTIMIZER: 'adam'
   VGG16:
-    NODES_DENSE0: 128
+    NODES_DENSE0: 64
     NODES_DENSE1: 32
     LR: 0.000001
     DROPOUT: 0.6

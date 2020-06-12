@@ -295,7 +295,6 @@ def vgg16(model_config, input_shape, metrics, n_classes, mixed_precision=False, 
     model.summary()
     model.compile(loss='categorical_crossentropy', optimizer=optimizer, metrics=metrics)
     return model
-    
 
 def inceptionresnetv2(model_config, input_shape, metrics, n_classes, mixed_precision=False, output_bias=None):
     '''
