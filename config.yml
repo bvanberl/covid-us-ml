@@ -19,7 +19,7 @@ PATHS:
   BATCH_PREDS: 'results/predictions/'
 
 DATA:
-  IMG_DIM: [224, 224]
+  IMG_DIM: [299, 299]
   VAL_SPLIT: 0.08
   TEST1_SPLIT: 0.08
   TEST2_SPLIT: 0.08
@@ -27,11 +27,11 @@ DATA:
   CLASSES: ['COVID', 'NCOVID', 'SMOOTH']          # Classes for multiclass classification
 
 TRAIN:
-  MODEL_DEF: 'vgg16'                                # One of {'resnet50v2', 'resnet101v2', 'inceptionv3', 'vgg16', 'mobilenetv2', 'inceptionresnetv2', 'xception', 'custom_resnet', 'custom_ffcnn'}
+  MODEL_DEF: 'xception'                                # One of {'resnet50v2', 'resnet101v2', 'inceptionv3', 'vgg16', 'mobilenetv2', 'inceptionresnetv2', 'xception', 'custom_resnet', 'custom_ffcnn'}
   #CLASS_MULTIPLIER: [1.0, 1.0]                         # Class multiplier for binary classification
-  CLASS_MULTIPLIER: [1.5, 1.0, 1.0]                       # Class multiplier for multiclass classification
+  CLASS_MULTIPLIER: [1.0, 1.0, 1.0]                       # Class multiplier for multiclass classification
   EXPERIMENT_TYPE: 'single_train'                           # One of {'single_train', 'multi_train', 'hparam_search'}
-  BATCH_SIZE: 48
+  BATCH_SIZE: 80
   EPOCHS: 300
   PATIENCE: 3
   METRIC_PREFERENCE: ['auc', 'recall', 'precision', 'loss']
@@ -81,14 +81,18 @@ NN:
     LR: 0.0001
     DROPOUT: 0.5
     L2_LAMBDA: 0.001
+    FROZEN_LAYERS: []
     OPTIMIZER: 'adam'
   XCEPTION:
     NODES_DENSE0: 64
     NODES_DENSE1: 16
     LR: 0.000001
-    DROPOUT: 0.5
+    DROPOUT: 0.6
     L2_LAMBDA: 0.001
     OPTIMIZER: 'adam'
+    FROZEN_LAYERS: []
+    L2_LAYERS: []
+    FROZEN_LAYERS: []
   CUSTOM_RESNET:
     KERNEL_SIZE: (3,3)
     STRIDES: (2,2)

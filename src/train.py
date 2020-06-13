@@ -82,9 +82,10 @@ def train_model(cfg, data, callbacks, verbose=1):
         preprocessing_function = mobilenetv2_preprocess
     elif cfg['TRAIN']['MODEL_DEF'] == 'inceptionresnetv2':
         model_def = inceptionresnetv2
+        preprocessing_function = inceptionresnetv2_preprocess
     elif cfg['TRAIN']['MODEL_DEF'] == 'xception':
         model_def = xception
-        preprocessing_function = inceptionresnetv2_preprocess
+        preprocessing_function = xception_preprocess
     elif cfg['TRAIN']['MODEL_DEF'] == 'custom_resnet':
         model_def = custom_resnet
     else:
@@ -129,7 +130,7 @@ def train_model(cfg, data, callbacks, verbose=1):
     # Define metrics.
     covid_class_idx = test_generator.class_indices['COVID']   # Get index of COVID-19 class
     thresholds = 1.0 / len(cfg['DATA']['CLASSES'])      # Binary classification threshold for a class
-    metrics = ['accuracy', CategoricalAccuracy(name='accuracy'),
+    metrics = ['accuracy', 
                Precision(name='precision', thresholds=thresholds, class_id=covid_class_idx),
                Recall(name='recall', thresholds=thresholds, class_id=covid_class_idx),
                AUC(name='auc')]
