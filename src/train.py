@@ -16,6 +16,7 @@ from tensorflow.keras.applications.resnet_v2 import preprocess_input as resnet_p
 from tensorflow.keras.applications.inception_v3 import preprocess_input as inceptionv3_preprocess
 from tensorflow.keras.applications.mobilenet_v2 import preprocess_input as mobilenetv2_preprocess
 from tensorflow.keras.applications.vgg16 import preprocess_input as vgg16_preprocess
+from tensorflow.keras.applications.xception import preprocess_input as xception_preprocess
 from tensorflow.keras.applications.inception_resnet_v2 import preprocess_input as inceptionresnetv2_preprocess
 from tensorboard.plugins.hparams import api as hp
 from src.data.build_dataset import *
@@ -50,7 +51,7 @@ def define_callbacks(cfg):
                                    restore_best_weights=True)
     reduce_lr = ReduceLROnPlateau(monitor='val_loss', factor=0.5, patience=cfg['TRAIN']['PATIENCE'] // 2 + 1, verbose=1,
                                   min_lr=1e-8, min_delta=0.0001)
-    callbacks = [early_stopping, reduce_lr]
+    callbacks = [early_stopping]
     return callbacks
 
 
@@ -81,6 +82,8 @@ def train_model(cfg, data, callbacks, verbose=1):
         preprocessing_function = mobilenetv2_preprocess
     elif cfg['TRAIN']['MODEL_DEF'] == 'inceptionresnetv2':
         model_def = inceptionresnetv2
+    elif cfg['TRAIN']['MODEL_DEF'] == 'xception':
+        model_def = xception
         preprocessing_function = inceptionresnetv2_preprocess
     elif cfg['TRAIN']['MODEL_DEF'] == 'custom_resnet':
         model_def = custom_resnet
@@ -96,8 +99,8 @@ def train_model(cfg, data, callbacks, verbose=1):
         test_img_gen = ImageDataGenerator(samplewise_center=True, samplewise_std_normalization=True)
     else:
         train_img_gen = ImageDataGenerator(zoom_range=0.10, horizontal_flip=True, width_shift_range=0.2,
-                                           height_shift_range=0.2, shear_range=20, rotation_range=50,
-                                           brightness_range=[0.7,1.3],preprocessing_function=preprocessing_function)
+                                           height_shift_range=0.05, shear_range=0, rotation_range=10,
+                                           brightness_range=[0.7,1.1],preprocessing_function=preprocessing_function)
         val_img_gen = ImageDataGenerator(preprocessing_function=preprocessing_function)
         test_img_gen = ImageDataGenerator(preprocessing_function=preprocessing_function)
 
