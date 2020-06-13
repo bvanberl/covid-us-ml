@@ -33,12 +33,12 @@ class DifferentialAdam(Adam):
         base_lr_params = [p for p in params if self._get_multiplier(p) is None]
 
         updates = []
-        base_lr = self.lr
+        base_lr = self.learning_rate
         for param, multiplier in mult_lr_params.items():
-            self.lr = base_lr * multiplier
+            self.learning_rate = base_lr * multiplier
             updates.extend(self.get_updates(loss, [param]))
 
-        self.lr = base_lr
+        self.learning_rate = base_lr
         updates.extend(self.get_updates(loss, base_lr_params))
 
         return updates

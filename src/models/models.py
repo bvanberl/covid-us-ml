@@ -271,7 +271,7 @@ def vgg16(model_config, input_shape, metrics, n_classes, mixed_precision=False, 
         base_model.layers[layer2freeze].trainable = False
 
     # Add regularization to VGG16 conv layers
-    for layer_idx in model_config['L2_LAYERS']]:
+    for layer_idx in model_config['L2_LAYERS']:
         if base_models.layers[layer_idx].trainable:
             setattr(base_models.layers[layer_idx], 'activity_regularizer', l2(l2_lambda))
             print('Adding regularization to: ' + str(base_models.layers[layer_idx]))
@@ -337,24 +337,30 @@ def xception(model_config, input_shape, metrics, n_classes, mixed_precision=Fals
         base_model.layers[layer2freeze].trainable = False
 
     # Add regularization to VGG16 conv layers
-    for layer in base_model.layers:
-        if layer.trainable and 'conv' in layer.name:
-            setattr(layer, 'kernel_regularizer', l2(l2_lambda))
-            print('Adding regularization to: ' + str(layer))
+    for layer_idx in model_config['L2_LAYERS']:
+        if base_models.layers[layer_idx].trainable:
+            setattr(base_models.layers[layer_idx], 'activity_regularizer', l2(l2_lambda))
+            print('Adding regularization to: ' + str(base_models.layers[layer_idx]))
     
     X = base_model.output
 
     # Add custom top layers
     X = GlobalAveragePooling2D()(X)
     X = Dropout(dropout)(X)
-    #X = Dense(nodes_dense0, kernel_initializer='he_uniform', activation='relu', activity_regularizer=l2(l2_lambda))(X)
-    #X = BatchNormalization()(X)
+    #X = Dense(nodes_dense0, kernel_initializer='he_uniform', activation='relu', activity_regularizer=l2(l2_lambda), name='fc0')(X)
+    #X = BatchNormalization(name='bn1')(X)
     #X = Dropout(dropout)(X)
-    X = Dense(n_classes, bias_initializer=output_bias)(X)
+    X = Dense(n_classes, bias_initializer=output_bias, name='logits')(X)
     Y = Activation('softmax', dtype='float32', name='output')(X)
 
     # Set model loss function, optimizer, metrics.
     model = Model(inputs=X_input, outputs=Y)
+    '''
+    multipliers = {'fc0': 10e1, 'bn0': 10e1, 'logits': 10e1, 'output': 10e1}
+    optimizer = DifferentialAdam(Adam, lr_multipliers=multipliers, learning_rate=lr)
+    if mixed_precision:
+        tf.train.experimental.enable_mixed_precision_graph_rewrite(optimizer)
+    '''
     model.summary()
     model.compile(loss='categorical_crossentropy', optimizer=optimizer, metrics=metrics)
     return model
