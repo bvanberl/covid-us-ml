@@ -10,6 +10,8 @@ from tensorflow.keras.applications.vgg16 import VGG16
 from tensorflow.keras.applications.inception_v3 import InceptionV3
 from tensorflow.keras.applications.mobilenet_v2 import MobileNetV2
 from tensorflow.keras.applications.inception_resnet_v2 import InceptionResNetV2
+from tensorflow.keras.applications.xception import Xception
+from src.custom.lr_multiplier import DifferentialAdam
 
 def resnet50v2(model_config, input_shape, metrics, n_classes, mixed_precision=False, output_bias=None):
     '''
@@ -203,28 +205,27 @@ def mobilenetv2(model_config, input_shape, metrics, n_classes, mixed_precision=F
     X_input = Input(input_shape, name='input')
     base_model = MobileNetV2(include_top=False, weights='imagenet', input_shape=input_shape, input_tensor=X_input)
     '''
-    for layer in base_model.layers[:-20]:
+    for layer in base_model.layers[:30]:
         layer.trainable = False
-    for layer in base_model.layers[-20:]:
+    for layer in base_model.layers[30:]:
         layer.trainable = True
         if 'keras.layers.Conv2D' in layer._keras_api_names:
-            setattr(layer, 'activity_regularizer', l2(l2_lambda * 1e-2))
+            setattr(layer, 'activity_regularizer', l2(l2_lambda))
             print("Trainable layer with regularization added", layer.name)
-        else:
-            layer.trainable = False
     '''
     X = base_model.output
 
     # Add custom top layers
+    X = BatchNormalization()(X)
     X = GlobalAveragePooling2D()(X)
     X = Dropout(dropout)(X)
     X = Dense(nodes_dense0, activation='relu', activity_regularizer=l2(l2_lambda))(X)
     #X = LeakyReLU()(X)
-    #X = BatchNormalization()(X)
+    X = BatchNormalization()(X)
     #X = Dropout(dropout)(X)
     #X = Dense(nodes_dense1, activity_regularizer=l2(l2_lambda))(X)
     #X = LeakyReLU()(X)
-    #X = Dropout(dropout)(X)
+    X = Dropout(dropout)(X)
     X = Dense(n_classes, bias_initializer=output_bias)(X)
     Y = Activation('softmax', dtype='float32', name='output')(X)
 
@@ -253,11 +254,8 @@ def vgg16(model_config, input_shape, metrics, n_classes, mixed_precision=False, 
     lr = model_config['LR']
     dropout = model_config['DROPOUT']
     l2_lambda = model_config['L2_LAMBDA']
-    optimizer = Adam(learning_rate=lr)
     frozen_layers = model_config['FROZEN_LAYERS']
     print("MODEL CONFIG: ", model_config)
-    if mixed_precision:
-        tf.train.experimental.enable_mixed_precision_graph_rewrite(optimizer)
 
     if output_bias is not None:
         output_bias = Constant(output_bias)     # Set initial output bias
@@ -273,20 +271,85 @@ def vgg16(model_config, input_shape, metrics, n_classes, mixed_precision=False, 
         base_model.layers[layer2freeze].trainable = False
 
     # Add regularization to VGG16 conv layers
-    for layer in base_model.layers:
-        idx = 0
-        if base_model.layers[0].trainable and 'conv' in layer.name:
-            setattr(layer, 'activity_regulizer', l2(l2_lambda))
-            print('Adding regularization to: ' + str(base_model.layers[layers]))
-        idx += 1
+    for layer_idx in model_config['L2_LAYERS']]:
+        if base_models.layers[layer_idx].trainable:
+            setattr(base_models.layers[layer_idx], 'activity_regularizer', l2(l2_lambda))
+            print('Adding regularization to: ' + str(base_models.layers[layer_idx]))
     
     X = base_model.output
 
     # Add custom top layers
     X = GlobalAveragePooling2D()(X)
     X = Dropout(dropout)(X)
-    X = Dense(nodes_dense0, kernel_initializer='he_uniform', activation='relu', activity_regularizer=l2(l2_lambda))(X)
+    X = Dense(nodes_dense0, kernel_initializer='he_uniform', activation='relu', activity_regularizer=l2(l2_lambda), name='fc0')(X)
+    X = BatchNormalization(name='bn0')(X)
     X = Dropout(dropout)(X)
+    X = Dense(n_classes, bias_initializer=output_bias, name='logits')(X)
+    Y = Activation('softmax', dtype='float32', name='output')(X)
+
+    # Set model loss function, optimizer, metrics.
+    model = Model(inputs=X_input, outputs=Y)
+    
+    multipliers = {'fc0': 10e1, 'bn0': 10e1, 'logits': 10e1, 'output': 10e1}
+    optimizer = DifferentialAdam(Adam, lr_multipliers=multipliers, learning_rate=lr)
+    if mixed_precision:
+        tf.train.experimental.enable_mixed_precision_graph_rewrite(optimizer)
+        
+    model.summary()
+    model.compile(loss='categorical_crossentropy', optimizer=optimizer, metrics=metrics)
+    return model
+
+def xception(model_config, input_shape, metrics, n_classes, mixed_precision=False, output_bias=None):
+    '''
+    Defines a model based on a pretrained Xception for multiclass US classification.
+    :param model_config: A dictionary of parameters associated with the model architecture
+    :param input_shape: The shape of the model input
+    :param metrics: Metrics to track model's performance
+    :param n_classes: # of classes in data
+    :param mixed_precision: Whether to use mixed precision (use if you have GPU with compute capacity >= 7.0)
+    :param output_bias: bias initializer of output layer
+    :return: a Keras Model object with the architecture defined in this method
+    '''
+
+    # Set hyperparameters
+    nodes_dense0 = model_config['NODES_DENSE0']
+    nodes_dense1 = model_config['NODES_DENSE1']
+    lr = model_config['LR']
+    dropout = model_config['DROPOUT']
+    l2_lambda = model_config['L2_LAMBDA']
+    optimizer = Adam(learning_rate=lr)
+    frozen_layers = model_config['FROZEN_LAYERS']
+    print("MODEL CONFIG: ", model_config)
+    if mixed_precision:
+        tf.train.experimental.enable_mixed_precision_graph_rewrite(optimizer)
+
+    if output_bias is not None:
+        output_bias = Constant(output_bias)     # Set initial output bias
+
+    # Start with pretrained VGG16
+    X_input = Input(input_shape, name='input')
+    base_model = Xception(include_top=False, weights='imagenet', input_shape=input_shape, input_tensor=X_input)
+    
+    # Freeze desired conv layers set in config.yml
+    for layers in range(len(frozen_layers)):
+        layer2freeze = frozen_layers[layers]
+        print('Freezing layer: ' + str(layer2freeze))
+        base_model.layers[layer2freeze].trainable = False
+
+    # Add regularization to VGG16 conv layers
+    for layer in base_model.layers:
+        if layer.trainable and 'conv' in layer.name:
+            setattr(layer, 'kernel_regularizer', l2(l2_lambda))
+            print('Adding regularization to: ' + str(layer))
+    
+    X = base_model.output
+
+    # Add custom top layers
+    X = GlobalAveragePooling2D()(X)
+    X = Dropout(dropout)(X)
+    #X = Dense(nodes_dense0, kernel_initializer='he_uniform', activation='relu', activity_regularizer=l2(l2_lambda))(X)
+    #X = BatchNormalization()(X)
+    #X = Dropout(dropout)(X)
     X = Dense(n_classes, bias_initializer=output_bias)(X)
     Y = Activation('softmax', dtype='float32', name='output')(X)
 
