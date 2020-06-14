@@ -11,7 +11,7 @@ from tensorflow.keras.applications.inception_v3 import InceptionV3
 from tensorflow.keras.applications.mobilenet_v2 import MobileNetV2
 from tensorflow.keras.applications.inception_resnet_v2 import InceptionResNetV2
 from tensorflow.keras.applications.xception import Xception
-from src.custom.lr_multiplier import DifferentialAdam
+from src.custom.differential_adam import DifferentialAdam
 
 def resnet50v2(model_config, input_shape, metrics, n_classes, mixed_precision=False, output_bias=None):
     '''
@@ -290,6 +290,7 @@ def vgg16(model_config, input_shape, metrics, n_classes, mixed_precision=False, 
     # Set model loss function, optimizer, metrics.
     model = Model(inputs=X_input, outputs=Y)
     
+    # Set Adam optimizer with differential learning
     multipliers = {'fc0': 10e1, 'bn0': 10e1, 'logits': 10e1, 'output': 10e1}
     optimizer = DifferentialAdam(Adam, lr_multipliers=multipliers, learning_rate=lr)
     if mixed_precision:
@@ -326,7 +327,7 @@ def xception(model_config, input_shape, metrics, n_classes, mixed_precision=Fals
     if output_bias is not None:
         output_bias = Constant(output_bias)     # Set initial output bias
 
-    # Start with pretrained VGG16
+    # Start with pretrained Xception
     X_input = Input(input_shape, name='input')
     base_model = Xception(include_top=False, weights='imagenet', input_shape=input_shape, input_tensor=X_input)
     
@@ -336,7 +337,7 @@ def xception(model_config, input_shape, metrics, n_classes, mixed_precision=Fals
         print('Freezing layer: ' + str(layer2freeze))
         base_model.layers[layer2freeze].trainable = False
 
-    # Add regularization to VGG16 conv layers
+    # Add regularization to Xception conv layers
     for layer_idx in model_config['L2_LAYERS']:
         if base_models.layers[layer_idx].trainable:
             setattr(base_models.layers[layer_idx], 'activity_regularizer', l2(l2_lambda))
@@ -347,20 +348,11 @@ def xception(model_config, input_shape, metrics, n_classes, mixed_precision=Fals
     # Add custom top layers
     X = GlobalAveragePooling2D()(X)
     X = Dropout(dropout)(X)
-    #X = Dense(nodes_dense0, kernel_initializer='he_uniform', activation='relu', activity_regularizer=l2(l2_lambda), name='fc0')(X)
-    #X = BatchNormalization(name='bn1')(X)
-    #X = Dropout(dropout)(X)
     X = Dense(n_classes, bias_initializer=output_bias, name='logits')(X)
     Y = Activation('softmax', dtype='float32', name='output')(X)
 
     # Set model loss function, optimizer, metrics.
     model = Model(inputs=X_input, outputs=Y)
-    '''
-    multipliers = {'fc0': 10e1, 'bn0': 10e1, 'logits': 10e1, 'output': 10e1}
-    optimizer = DifferentialAdam(Adam, lr_multipliers=multipliers, learning_rate=lr)
-    if mixed_precision:
-        tf.train.experimental.enable_mixed_precision_graph_rewrite(optimizer)
-    '''
     model.summary()
     model.compile(loss='categorical_crossentropy', optimizer=optimizer, metrics=metrics)
     return model
