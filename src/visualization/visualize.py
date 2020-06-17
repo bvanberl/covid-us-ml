@@ -26,7 +26,7 @@ def plot_to_tensor():
     return image_tensor
 
 
-def plot_roc(labels, predictions, class_name_list, dir_path=None):
+def plot_roc(labels, predictions, class_name_list, dir_path=None, title=None):
     '''
     Plots the ROC curve for predictions on a dataset
     :param labels: Ground truth labels
@@ -42,7 +42,10 @@ def plot_roc(labels, predictions, class_name_list, dir_path=None):
         fp, tp, _ = roc_curve(single_class_labels, single_class_preds)  # Get values for true positive and true negative
         plt.plot(100*fp, 100*tp, label=class_name, linewidth=2)   # Plot the ROC curve
 
-    plt.title('ROC curves for test set')
+    if title is None:
+        plt.title('ROC curves for test set')
+    else:
+        plt.title(title)
     plt.xlabel('False positives [%]')
     plt.ylabel('True positives [%]')
     plt.xlim([-5,105])
@@ -58,7 +61,7 @@ def plot_roc(labels, predictions, class_name_list, dir_path=None):
     return plt
 
 
-def plot_confusion_matrix(labels, predictions, class_name_list, dir_path=None):
+def plot_confusion_matrix(labels, predictions, class_name_list, dir_path=None, title=None):
     '''
     Plot a confusion matrix for the ground truth labels and corresponding model predictions for a particular class.
     :param labels: Ground truth labels
@@ -83,7 +86,10 @@ def plot_confusion_matrix(labels, predictions, class_name_list, dir_path=None):
             plt.text(j, i, cm[i, j], horizontalalignment="center", color="white" if cm[i, j] > thresh else "black")
 
     # Set plot's title and axis names
-    plt.title('Confusion matrix for test set')
+    if title is None:
+        plt.title('Confusion matrix for test set')
+    else:
+        plt.title(title)
     plt.ylabel('Actual label')
     plt.xlabel('Predicted label')
 
