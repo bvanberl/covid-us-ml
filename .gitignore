@@ -6,6 +6,7 @@ results/experiments/*
 results/logs/training/*
 results/logs/hparam_search/*
 results/models/*
+results/metrics/*
 results/predictions/*
 !data/preprocessed/.gitkeep
 !data/serializations/.gitkeep
@@ -19,6 +20,7 @@ results/predictions/*
 !results/models/.gitkeep
 !results/experiments/.gitkeep
 !results/predictions/.gitkeep
+!results/metrics/.gitkeep
 *.out
 
 # PYTHON ------------------------------------------------
