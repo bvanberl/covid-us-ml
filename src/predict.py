@@ -1,4 +1,4 @@
-import yaml, os, dill
+import yaml, os, dill, json
 import numpy as np
 import pandas as pd
 from sklearn.metrics import *
@@ -94,7 +94,7 @@ def compute_metrics(cfg, labels, preds, probs):
     recalls = recall_score(labels, preds, average=None)
     f1s = f1_score(labels, preds, average=None)
 
-    metrics['confusion_matrix'] = confusion_matrix(labels, preds)
+    metrics['confusion_matrix'] = confusion_matrix(labels, preds).tolist()
     metrics['precision'] = {class_names[i]:precisions[i] for i in range(len(precisions))}
     metrics['recall'] = {class_names[i]:recalls[i] for i in range(len(recalls))}
     metrics['f1'] = {class_names[i]:f1s[i] for i in range(len(f1s))}
@@ -113,7 +113,6 @@ def compute_metrics_by_encounter(cfg, dataset_files_path, dataset_encounters_pat
     :param dataset_files_path: Path to CSV of Dataframe linking filenames to labels
     :param dataset_encounters_path: Path to CSV of Dataframe linking encounters to labels
     '''
-
     model_type = cfg['TRAIN']['MODEL_DEF']
     preprocessing_fn = get_preprocessing_function(model_type)
     model = load_model(cfg['PATHS']['MODEL_TO_LOAD'], compile=False)
@@ -136,21 +135,47 @@ def compute_metrics_by_encounter(cfg, dataset_files_path, dataset_encounters_pat
         # Make predictions for each image
         pred_classes, pred_probs = predict_set(cfg, model, preprocessing_fn, enc_files_df)
 
+        # Compute average prediction probabilities for entire encounter
         avg_pred_prob = np.mean(pred_probs, axis=0)
         avg_pred_probs[i] = avg_pred_prob
 
+        # Record predicted class
         encounter_pred = np.argmax(avg_pred_prob)
         encounter_pred_classes.append(encounter_pred)
 
     metrics = compute_metrics(cfg, np.array(encounter_labels), np.array(encounter_pred_classes), avg_pred_probs)
     print(metrics)
-    doc = yaml.dump(metrics, open(cfg['PATHS']['METRICS'] + 'encounters_' + set_name + '.yml', 'w'))
+    doc = json.dump(metrics, open(cfg['PATHS']['METRICS'] + 'encounters_' + set_name + '.json', 'w'))
+    return
+
+
+def compute_metrics_by_frame(cfg, dataset_files_path):
+    '''
+    For a particular dataset, make predictions for each image and compute metrics. Save the resultant metrics.
+    :param cfg: project config
+    :param dataset_files_path: Path to CSV of Dataframe linking filenames to labels
+    '''
+    model_type = cfg['TRAIN']['MODEL_DEF']
+    preprocessing_fn = get_preprocessing_function(model_type)
+    model = load_model(cfg['PATHS']['MODEL_TO_LOAD'], compile=False)
+    set_name = dataset_files_path.split('/')[-1].split('.')[0] + '_frames'
+
+    files_df = pd.read_csv(dataset_files_path)
+    frame_labels = files_df['label']    # Get ground truth
+
+    # Make predictions for each image
+    pred_classes, pred_probs = predict_set(cfg, model, preprocessing_fn, files_df)
+
+    # Compute and save metrics
+    metrics = compute_metrics(cfg, np.array(frame_labels), np.array(pred_classes), pred_probs)
+    doc = json.dump(metrics, open(cfg['PATHS']['METRICS'] + 'frames_' + set_name + '.json', 'w'))
     return
 
 
 if __name__ == '__main__':
     cfg = yaml.full_load(open(os.getcwd() + "/config.yml", 'r'))
-    dataset_path = '/home/ampc/covid-us-ml/data/preprocessed/test1_set.csv'
-    encounters_path = '/home/ampc/covid-us-ml/data/preprocessed/encounters_test1.csv'
+    dataset_path = cfg['PATHS']['TEST1_SET']
+    encounters_path = cfg['PATHS']['ENCOUNTERS_TEST1']
     compute_metrics_by_encounter(cfg, dataset_path, encounters_path)
+    #compute_metrics_by_frame(cfg, dataset_path)
 
