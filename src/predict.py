@@ -1,4 +1,4 @@
-import yaml, os, dill, json
+import yaml, os, dill, json, datetime
 import numpy as np
 import pandas as pd
 from sklearn.metrics import *
@@ -101,7 +101,12 @@ def compute_metrics(cfg, labels, preds, probs):
     metrics['accuracy'] = accuracy_score(labels, preds)
     metrics['macro_mean_auc'] = roc_auc_score(labels, probs, average='macro', multi_class='ovr')
     metrics['weighted_mean_auc'] = roc_auc_score(labels, probs, average='weighted', multi_class='ovr')
-    print(metrics)
+
+    # Calculate classwise AUCs
+    for class_name in class_names:
+        classwise_labels = (labels == class_names.index(class_name)).astype(int)
+        class_probs = probs[:,class_names.index(class_name)]
+        metrics[class_name + '_auc'] = roc_auc_score(classwise_labels, class_probs)
     return metrics
 
 
@@ -146,6 +151,13 @@ def compute_metrics_by_encounter(cfg, dataset_files_path, dataset_encounters_pat
     metrics = compute_metrics(cfg, np.array(encounter_labels), np.array(encounter_pred_classes), avg_pred_probs)
     print(metrics)
     doc = json.dump(metrics, open(cfg['PATHS']['METRICS'] + 'encounters_' + set_name + '.json', 'w'))
+
+    # Save predictions
+    avg_pred_probs_df = pd.DataFrame(avg_pred_probs, columns=cfg['DATA']['CLASSES'])
+    avg_pred_probs_df.insert(0, 'encounter', encounters_df['encounter'])
+    avg_pred_probs_df.insert(1, 'label', encounters_df['label'])
+    avg_pred_probs_df.to_csv(cfg['PATHS']['BATCH_PREDS'] + set_name + '_predictions' +
+                             datetime.datetime.now().strftime('%Y%m%d-%H%M%S') + '.csv')
     return
 
 
@@ -169,6 +181,13 @@ def compute_metrics_by_frame(cfg, dataset_files_path):
     # Compute and save metrics
     metrics = compute_metrics(cfg, np.array(frame_labels), np.array(pred_classes), pred_probs)
     doc = json.dump(metrics, open(cfg['PATHS']['METRICS'] + 'frames_' + set_name + '.json', 'w'))
+
+    # Save predictions
+    pred_probs_df = pd.DataFrame(pred_probs, columns=cfg['DATA']['CLASSES'])
+    pred_probs_df.insert(0, 'filename', files_df['filename'])
+    pred_probs_df.insert(1, 'label', files_df['label'])
+    pred_probs_df.to_csv(cfg['PATHS']['BATCH_PREDS'] + set_name + '_predictions' +
+                          datetime.datetime.now().strftime('%Y%m%d-%H%M%S') + '.csv')
     return
 
 
@@ -176,6 +195,6 @@ if __name__ == '__main__':
     cfg = yaml.full_load(open(os.getcwd() + "/config.yml", 'r'))
     dataset_path = cfg['PATHS']['TEST1_SET']
     encounters_path = cfg['PATHS']['ENCOUNTERS_TEST1']
-    compute_metrics_by_encounter(cfg, dataset_path, encounters_path)
-    #compute_metrics_by_frame(cfg, dataset_path)
+    #compute_metrics_by_encounter(cfg, dataset_path, encounters_path)
+    compute_metrics_by_frame(cfg, dataset_path)
 
