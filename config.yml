@@ -1,8 +1,8 @@
 PATHS:
-  RAW_DATA: '/home/ampc/covid-us-ml/raw/'                # Path to folder containing all raw data
-  COVID_DATA: '/home/ampc/covid-us-ml/raw/COVID/'        # Path to COVID raw data
-  NCOVID_DATA: '/home/ampc/covid-us-ml/raw/NCOVID/'      # Path to NCOVID raw data
-  SMOOTH_DATA: '/home/ampc/covid-us-ml/raw/SMOOTH/'      # Path to SMOOTH raw data
+  RAW_DATA: 'D:/Documents/Data/covid-us-ml/raw/'                # Path to folder containing all raw data
+  COVID_DATA: 'D:/Documents/Data/covid-us-ml/raw/COVID/'        # Path to COVID raw data
+  NCOVID_DATA: 'D:/Documents/Data/covid-us-ml/raw/NCOVID/'      # Path to NCOVID raw data
+  SMOOTH_DATA: 'D:/Documents/Data/covid-us-ml/raw/SMOOTH/'      # Path to SMOOTH raw data
   PROCESSED_DATA: 'data/preprocessed/'
   TRAIN_SET: 'data/preprocessed/train_set.csv'
   TEST1_SET: 'data/preprocessed/test1_set.csv'
@@ -14,13 +14,13 @@ PATHS:
   LOGS: 'results/logs/'
   IMAGES: 'documents/generated_images/'
   MODEL_WEIGHTS: 'results/models/'
-  MODEL_TO_LOAD: 'results/models/model.h5'
+  MODEL_TO_LOAD: 'results/models/finalmodel.h5'
   OUTPUT_CLASS_INDICES: './data/serializations/output_class_indices.pkl'
   BATCH_PREDS: 'results/predictions/'
   METRICS: './results/metrics/'
 
 DATA:
-  IMG_DIM: [299, 299]
+  IMG_DIM: [600, 600]
   VAL_SPLIT: 0.08
   TEST1_SPLIT: 0.08
   TEST2_SPLIT: 0.08
