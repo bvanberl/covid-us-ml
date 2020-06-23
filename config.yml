@@ -19,7 +19,7 @@ PATHS:
   BATCH_PREDS: 'results/predictions/'
 
 DATA:
-  IMG_DIM: [299, 299]
+  IMG_DIM: [600, 600]
   VAL_SPLIT: 0.08
   TEST1_SPLIT: 0.08
   TEST2_SPLIT: 0.08
@@ -31,7 +31,7 @@ TRAIN:
   #CLASS_MULTIPLIER: [1.0, 1.0]                         # Class multiplier for binary classification
   CLASS_MULTIPLIER: [1.0, 1.0, 1.0]                       # Class multiplier for multiclass classification
   EXPERIMENT_TYPE: 'single_train'                           # One of {'single_train', 'multi_train', 'hparam_search'}
-  BATCH_SIZE: 80
+  BATCH_SIZE: 48
   EPOCHS: 300
   PATIENCE: 3
   METRIC_PREFERENCE: ['auc', 'recall', 'precision', 'loss']
@@ -84,10 +84,10 @@ NN:
     FROZEN_LAYERS: []
     OPTIMIZER: 'adam'
   XCEPTION:
-    NODES_DENSE0: 64
+    NODES_DENSE0: 16
     NODES_DENSE1: 16
     LR: 0.000001
-    DROPOUT: 0.6
+    DROPOUT: 0.7
     L2_LAMBDA: 0.001
     OPTIMIZER: 'adam'
     FROZEN_LAYERS: []

@@ -365,6 +365,10 @@ def train_experiment(cfg=None, experiment='single_train', save_weights=True, wri
     data = {}
     encounter_df_trainval = pd.read_csv(cfg['PATHS']['ENCOUNTERS_TRAINVAL'])
     data['TEST1'] = pd.read_csv(cfg['PATHS']['TEST1_SET'])
+    
+    # FOR FINAL RUN, CONCATENATE TEST1 TO TRAINVAL, THEN SPLIT OFF VALIDATION SET. TEST1 RESULTS IRRELEVENT FOR THIS RUN.
+    encounter_df_test1 = pd.read_csv(cfg['PATHS']['ENCOUNTERS_TEST1'])
+    encounter_df_trainval = pd.concat([encounter_df_trainval, encounter_df_test1], axis=0)
 
     # Partition a random validation set from the training set for this run
     test1_split = cfg['DATA']['TEST1_SPLIT']

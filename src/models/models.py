@@ -1,7 +1,7 @@
 import tensorflow as tf
 from tensorflow.keras import Model
 from tensorflow.keras.layers import Dense, Conv2D, MaxPool2D, Flatten, Dropout, Input, LeakyReLU, BatchNormalization, \
-                                    Activation, Add, GlobalAveragePooling2D, ZeroPadding2D, AveragePooling2D
+                                    Activation, Add, GlobalAveragePooling2D, ZeroPadding2D, AveragePooling2D, SeparableConv2D
 from tensorflow.keras.regularizers import l2
 from tensorflow.keras.optimizers import Adam, SGD
 from tensorflow.keras.initializers import Constant
@@ -337,11 +337,11 @@ def xception(model_config, input_shape, metrics, n_classes, mixed_precision=Fals
         print('Freezing layer: ' + str(layer2freeze))
         base_model.layers[layer2freeze].trainable = False
 
-    # Add regularization to Xception conv layers
+    # Add regularization to some Xception conv layers
     for layer_idx in model_config['L2_LAYERS']:
-        if base_models.layers[layer_idx].trainable:
-            setattr(base_models.layers[layer_idx], 'activity_regularizer', l2(l2_lambda))
-            print('Adding regularization to: ' + str(base_models.layers[layer_idx]))
+        if base_model.layers[layer_idx].trainable and isinstance(base_model.layers[layer_idx], SeparableConv2D):
+            setattr(base_model.layers[layer_idx], 'activity_regularizer', l2(l2_lambda))
+            print('Adding regularization to: ' + str(base_model.layers[layer_idx]))
     
     X = base_model.output
 
