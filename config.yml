@@ -1,18 +1,21 @@
 PATHS:
-  RAW_DATA: 'D:/Documents/Data/covid-us-ml/raw/'                # Path to folder containing all raw data
-  COVID_DATA: 'D:/Documents/Data/covid-us-ml/raw/COVID/'        # Path to COVID raw data
-  NCOVID_DATA: 'D:/Documents/Data/covid-us-ml/raw/NCOVID/'      # Path to NCOVID raw data
-  SMOOTH_DATA: 'D:/Documents/Data/covid-us-ml/raw/SMOOTH/'      # Path to SMOOTH raw data
+  RAW_DATA: 'data/covid_external_val/'         # Path to folder containing all raw data
+  COVID_DATA: 'data/covid_external_val/raw_covid'        # Path to COVID raw data
+  NCOVID_DATA: 'data/covid_external_val/raw_ncovid'      # Path to NCOVID raw data
+  SMOOTH_DATA: 'data/covid_external_val/raw_smooth'      # Path to SMOOTH raw data
   PROCESSED_DATA: 'data/preprocessed/'
+  FRAMES_PATH: 'data/covid_external_val/frames'
   TRAIN_SET: 'data/preprocessed/train_set.csv'
   TEST1_SET: 'data/preprocessed/test1_set.csv'
   TEST2_SET: 'data/preprocessed/test2_set.csv'
+  OTTAWA_SET: 'data/preprocessed/ottawa_test_set.csv'
   ENCOUNTERS_TRAINVAL: 'data/preprocessed/encounters_trainval.csv'
+  ENCOUNTERS_OTTAWA: 'data/preprocessed/encounters_ottawa.csv'
   ENCOUNTERS_TEST1: 'data/preprocessed/encounters_test1.csv'
   ENCOUNTERS_TEST2: 'data/preprocessed/encounters_test2.csv'
   GEN_IMAGES: 'documents/generated_images/'
   LOGS: 'results/logs/'
-  IMAGES: 'documents/generated_images/'
+  IMAGES: 'documents/generated_images/ottawa heatmaps/'
   MODEL_WEIGHTS: 'results/models/'
   MODEL_TO_LOAD: 'results/models/finalmodel.h5'
   OUTPUT_CLASS_INDICES: './data/serializations/output_class_indices.pkl'

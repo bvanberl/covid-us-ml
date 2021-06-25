@@ -2,6 +2,7 @@ import yaml, os, dill, json, datetime
 import numpy as np
 import pandas as pd
 from sklearn.metrics import *
+from tensorflow import keras
 from tensorflow.keras.models import load_model
 from tensorflow.keras.preprocessing.image import ImageDataGenerator
 from tensorflow.keras.applications.resnet_v2 import preprocess_input as resnet_preprocess
@@ -193,8 +194,8 @@ def compute_metrics_by_frame(cfg, dataset_files_path):
 
 if __name__ == '__main__':
     cfg = yaml.full_load(open(os.getcwd() + "/config.yml", 'r'))
-    dataset_path = cfg['PATHS']['TEST2_SET']
-    encounters_path = cfg['PATHS']['ENCOUNTERS_TEST2']
+    dataset_path = cfg['PATHS']['OTTAWA_SET']
+    encounters_path = cfg['PATHS']['ENCOUNTERS_OTTAWA']
     compute_metrics_by_encounter(cfg, dataset_path, encounters_path)
     compute_metrics_by_frame(cfg, dataset_path)
 

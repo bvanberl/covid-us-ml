@@ -25,7 +25,7 @@ def setup_gradcam():
     setup_dict['MODEL'] = load_model(cfg['PATHS']['MODEL_TO_LOAD'], compile=False)
     setup_dict['IMG_PATH'] = cfg['PATHS']['IMAGES']
     setup_dict['RAW_DATA_PATH'] = cfg['PATHS']['RAW_DATA']
-    setup_dict['TEST2_SET'] = pd.read_csv(cfg['PATHS']['TEST2_SET'])
+    setup_dict['OTTAWA_SET'] = pd.read_csv(cfg['PATHS']['OTTAWA_SET'])
     setup_dict['IMG_DIM'] = cfg['DATA']['IMG_DIM']
     setup_dict['CLASSES'] = cfg['DATA']['CLASSES']
 
@@ -106,7 +106,7 @@ def apply_gradcam_to_encounter(setup_dict, encounter_path):
 
     # Get indices in test set of images comprising the encounter
     enc_name = encounter_path.split('/')[-1].split(' ')[0]
-    enc_files_df = setup_dict['TEST2_SET'][setup_dict['TEST2_SET']['filename'].str.contains(enc_name)]
+    enc_files_df = setup_dict['OTTAWA_SET'][setup_dict['OTTAWA_SET']['filename'].str.contains(enc_name)]
     assert enc_files_df.shape[0] > 0, 'Cannot find any images in test set with this encounter name.'
 
     # We will save all heatmaps in the same folder
@@ -129,7 +129,7 @@ def run_gradcam_on_img(setup_dict, idx, hm_intensity=0.5, dir_path=None):
     :return: The heatmap produced by Grad-CAM
     '''
     cfg = yaml.full_load(open(os.getcwd() + "/config.yml", 'r'))
-    files_df = pd.read_csv(cfg['PATHS']['TEST2_SET'])
+    files_df = pd.read_csv(cfg['PATHS']['OTTAWA_SET'])
     row = files_df.iloc[[idx]]
     heatmap = apply_gradcam(cfg, setup_dict, row, hm_intensity=hm_intensity, dir_path=dir_path)
     return heatmap
@@ -137,6 +137,6 @@ def run_gradcam_on_img(setup_dict, idx, hm_intensity=0.5, dir_path=None):
 
 if __name__ == '__main__':
     setup_dict = setup_gradcam()
-    heatmap = run_gradcam_on_img(setup_dict, 0, hm_intensity=0.5, dir_path=setup_dict['IMG_PATH'])    # Generate heatmap for image
+    heatmap = run_gradcam_on_img(setup_dict, 11700, hm_intensity=0.5, dir_path=setup_dict['IMG_PATH'])    # Generate heatmap for image
     #apply_gradcam_to_encounter(setup_dict, '/home/ampc/raw/COVID/10.15.39 hrs __0002107')
 

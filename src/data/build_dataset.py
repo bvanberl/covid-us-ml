@@ -8,6 +8,8 @@ from sklearn.model_selection import train_test_split
 from src.data.filter_beam import filter_beam, find_contour_area, contour_image
 from src.data.preprocess import to_greyscale
 
+cfg = yaml.full_load(open(os.getcwd() + "/config.yml", 'r'))  # Load config data
+
 def mp4_to_images(mp4_path):
     '''
     Converts an mp4 video to a series of images and saves the images in the same directory.
@@ -102,7 +104,7 @@ def build_encounter_dataframe(cfg):
             covid_encounter_dirs.append(encounter_dir)
     covid_encounter_df = pd.DataFrame({'encounter': covid_encounter_dirs, 'label': class_dict['COVID']})
 
-    # Label all encounters for COVID-19 class
+    # Label all encounters for NCOVID class
     ncovid_encounter_dirs = []
     for encounter_dir in os.listdir(ncovid_data_path):
         encounter_dir = os.path.join(ncovid_data_path, encounter_dir).replace("\\","/")
@@ -110,7 +112,7 @@ def build_encounter_dataframe(cfg):
             ncovid_encounter_dirs.append(encounter_dir)
     ncovid_encounter_df = pd.DataFrame({'encounter': ncovid_encounter_dirs, 'label': class_dict['NCOVID']})
 
-    # Label all encounters for COVID-19 class
+    # Label all encounters for SMOOTH class
     smooth_encounter_dirs = []
     for encounter_dir in os.listdir(smooth_data_path):
         encounter_dir = os.path.join(smooth_data_path, encounter_dir).replace("\\","/")
@@ -185,31 +187,31 @@ def build_dataset(cfg=None, img_overwrite=False):
     print("Assigning labels to encounters.")
     encounter_df = build_encounter_dataframe(cfg)
 
-    # Randomly split encounters dataframe into train, val and test sets
-    print("Partitioning training and test sets.")
-    test1_split = cfg['DATA']['TEST1_SPLIT']
-    test2_split = cfg['DATA']['TEST2_SPLIT']
-    encounter_df, encounter_df_test2 = train_test_split(encounter_df, test_size=test2_split,
-                                                        random_state=42, stratify=encounter_df['label'])
-    relative_test1_split = test1_split / (1 - test2_split)  # Calculate fraction of train_df to be used for validation
-    encounter_df_trainval, encounter_df_test1 = train_test_split(encounter_df, test_size=relative_test1_split,
-                                                                 random_state=42, stratify=encounter_df['label'])
+    # # Randomly split encounters dataframe into train, val and test sets
+    # print("Partitioning training and test sets.")
+    # test1_split = cfg['DATA']['TEST1_SPLIT']
+    # test2_split = cfg['DATA']['TEST2_SPLIT']
+    # encounter_df, encounter_df_test2 = train_test_split(encounter_df, test_size=test2_split,
+    #                                                     random_state=42, stratify=encounter_df['label'])
+    # relative_test1_split = test1_split / (1 - test2_split)  # Calculate fraction of train_df to be used for validation
+    # encounter_df_trainval, encounter_df_test1 = train_test_split(encounter_df, test_size=relative_test1_split,
+    #                                                              random_state=42, stratify=encounter_df['label'])
 
     # Build Pandas dataframe to link all image file names and labels.
     print("Building image dataset")
-    test1_file_df = build_file_dataframe(cfg, encounter_df_test1, img_overwrite=img_overwrite)
-    test2_file_df = build_file_dataframe(cfg, encounter_df_test2, img_overwrite=img_overwrite)
-    train_file_df = build_file_dataframe(cfg, encounter_df_trainval, img_overwrite=img_overwrite)
+    ottawa_file_df = build_file_dataframe(cfg, encounter_df, img_overwrite=img_overwrite)
+    # test2_file_df = build_file_dataframe(cfg, encounter_df_test2, img_overwrite=img_overwrite)
+    # train_file_df = build_file_dataframe(cfg, encounter_df_trainval, img_overwrite=img_overwrite)
 
     # Save training, test1 and test2 sets
     if not os.path.exists(cfg['PATHS']['PROCESSED_DATA']):
         os.makedirs(cfg['PATHS']['PROCESSED_DATA'])
-    train_file_df.to_csv(cfg['PATHS']['TRAIN_SET'])
-    test1_file_df.to_csv(cfg['PATHS']['TEST1_SET'])     # For assessing individual models
-    test2_file_df.to_csv(cfg['PATHS']['TEST2_SET'])     # To be left out until the final model
-    encounter_df_trainval.to_csv(cfg['PATHS']['ENCOUNTERS_TRAINVAL'])   # Train and val to be partitioned upon training
-    encounter_df_test1.to_csv(cfg['PATHS']['ENCOUNTERS_TEST1'])
-    encounter_df_test2.to_csv(cfg['PATHS']['ENCOUNTERS_TEST2'])
+    # train_file_df.to_csv(cfg['PATHS']['TRAIN_SET'])
+    ottawa_file_df.to_csv(cfg['PATHS']['OTTAWA_SET'])     # For assessing individual models
+    # test2_file_df.to_csv(cfg['PATHS']['TEST2_SET'])     # To be left out until the final model
+    # encounter_df_trainval.to_csv(cfg['PATHS']['ENCOUNTERS_TRAINVAL'])   # Train and val to be partitioned upon training
+    encounter_df.to_csv(cfg['PATHS']['ENCOUNTERS_OTTAWA'])
+    # encounter_df_test2.to_csv(cfg['PATHS']['ENCOUNTERS_TEST2'])
     return
 
 if __name__ == '__main__':

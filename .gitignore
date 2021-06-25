@@ -1,6 +1,7 @@
 # PROJECT FILES ------------------------------------------
 data/preprocessed/*
 data/serializations/*
+data/covid_external_val/*
 documents/generated_images/*
 results/experiments/*
 results/logs/training/*
